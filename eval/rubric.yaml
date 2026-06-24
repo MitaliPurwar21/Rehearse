@@ -1,0 +1,51 @@
+# eval/rubric.yaml — universal scoring dimensions for interview-answer evaluation.
+# JD-derived competencies are scored ON these fixed dimensions so the golden set
+# stays portable across roles. Competency score = rounded mean of dimension scores.
+
+version: 1
+aggregation: unweighted_mean   # v2: per-competency dimension weights (see README limitations)
+
+dimensions:
+  relevance:
+    description: Did the answer actually address the question and the competency being probed?
+    anchors:
+      1: Off-topic or non-answer. Talks past the question or answers a different one.
+      2: Tangentially related; grazes the question but never directly answers it.
+      3: Addresses the question directly, but partially — misses a clear sub-part.
+      4: Fully addresses the question and the competency behind it.
+      5: Fully addresses it and anticipates the real intent behind the question.
+
+  depth:
+    description: Technical correctness, specificity, and trade-off awareness vs. surface-level.
+    anchors:
+      1: Generic/textbook or factually incorrect. No specifics.
+      2: Right concepts named but cannot go deeper when probed; stays shallow.
+      3: Correct and specific; handles the main case; thin on trade-offs.
+      4: Specific, correct, discusses trade-offs and alternatives unprompted.
+      5: All of 4, plus failure modes, second-order effects, and when the approach does NOT apply.
+
+  evidence:
+    description: Concrete examples, metrics, and ownership vs. vague or hypothetical claims.
+    anchors:
+      1: No example. Pure abstraction or hypotheticals ("you would typically...").
+      2: Vague gesture at experience; no specifics, no outcome.
+      3: A concrete example with some detail; outcome or ownership unclear.
+      4: Specific example with clear personal ownership ("I did X") and a result.
+      5: Specific example, quantified result/impact, and honest reflection on what they'd change.
+
+  communication:
+    description: Structure, clarity, and conciseness. Long != good; reward density.
+    anchors:
+      1: Rambling or incoherent; cannot follow the point.
+      2: Point is buried; needs re-reading to extract; padded.
+      3: Clear and followable; some redundancy or weak structure.
+      4: Well-structured (setup → action → result), concise, easy to follow.
+      5: Tight, structured, and high-density — every sentence earns its place.
+
+scoring_rules:
+  - Score each dimension independently against its anchors.
+  - A confident, well-spoken, WRONG answer scores LOW on depth/evidence and can score
+    high on communication. Do not let fluency inflate substance (adversarial case — the bullshitter).
+  - Scores of 2, 4, or 5 require >=1 verbatim quote as evidence. A 1 (off-topic/absent)
+    or a neutral 3 may omit it.
+  - Reward density, not length. Penalize padding under communication.
