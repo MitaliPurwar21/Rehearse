@@ -2,9 +2,16 @@
 check it builds the prompt, stamps the metadata, and stays stable across calls.
 """
 
+from typing import TypeVar
+
+import pytest
+from pydantic import BaseModel, ValidationError
+
 from eval.runner import JudgeRunner, Transcript
 from eval.schemas import CompetencyEvaluation, DimensionScore, SessionEvaluation
 from rehearse_core.llm.fake import FakeProvider
+
+_T = TypeVar("_T", bound=BaseModel)
 
 
 def _canned() -> SessionEvaluation:
@@ -59,3 +66,54 @@ def test_prompt_hash_is_stable() -> None:
     runner = JudgeRunner(FakeProvider(_canned()))
     assert runner.prompt_hash == JudgeRunner(FakeProvider(_canned())).prompt_hash
     assert len(runner.prompt_hash) == 64
+
+
+def _a_validation_error() -> ValidationError:
+    # A 5 with no quotes is exactly what the judge sometimes returns and what the
+    # schema rejects — reuse that to simulate a bad model response.
+    try:
+        DimensionScore(dimension="depth", rationale="r", score=5, evidence_quotes=[])
+    except ValidationError as err:
+        return err
+    raise AssertionError("expected a ValidationError")
+
+
+class _FlakyProvider:
+    """Fails validation a set number of times, then returns a good response."""
+
+    model_id = "flaky"
+
+    def __init__(self, fail_times: int, response: SessionEvaluation) -> None:
+        self.fail_times = fail_times
+        self.response = response
+        self.calls = 0
+
+    def structured(
+        self,
+        *,
+        system: str,
+        user: str,
+        schema: type[_T],
+        temperature: float = 0.0,
+        max_tokens: int = 4096,
+    ) -> _T:
+        self.calls += 1
+        if self.calls <= self.fail_times:
+            raise _a_validation_error()
+        if not isinstance(self.response, schema):
+            raise TypeError("unexpected schema in test")
+        return self.response
+
+
+def test_judge_retries_then_succeeds() -> None:
+    provider = _FlakyProvider(fail_times=1, response=_canned())
+    result = JudgeRunner(provider).judge(_transcript())
+    assert provider.calls == 2
+    assert result.model_meta is not None and result.model_meta.model_id == "flaky"
+
+
+def test_judge_gives_up_after_max_attempts() -> None:
+    provider = _FlakyProvider(fail_times=99, response=_canned())
+    with pytest.raises(RuntimeError, match="failed schema validation"):
+        JudgeRunner(provider).judge(_transcript(), max_attempts=2)
+    assert provider.calls == 2

@@ -61,6 +61,6 @@ Return your evaluation in the required structured format only:
 - For each competency: four `dimension_scores` (each with `rationale`, `score`,
   `evidence_quotes`), a `competency_score`, and `summary_feedback`.
 - An `overall_feedback` paragraph: the candidate's biggest strength, biggest gap,
-  and the single highest-leverage thing to improve. Be direct and specific.
+  and the single most useful thing to work on next. Be direct and specific.
 
 Do not output anything outside the structured schema.

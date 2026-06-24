@@ -22,14 +22,19 @@ rehearse/
 │   └── llm/              # swappable LLM provider interface
 │       ├── base.py       #   LLMProvider protocol (structured output)
 │       ├── claude.py     #   Claude impl via tool-use
-│       └── fake.py       #   deterministic provider for tests (no API key)
+│       ├── groq.py       #   Groq impl (free fallback)
+│       ├── fake.py       #   deterministic provider for tests (no API key)
+│       └── factory.py    #   pick a provider from settings
 ├── eval/                 # offline evaluation harness
 │   ├── rubric.yaml       # 4 universal dimensions × 1–5 anchors + scoring rules
 │   ├── judge_prompt.md   # judge system prompt
 │   ├── schemas.py        # Pydantic judge output (self-validating)
-│   ├── runner.py         # JudgeRunner: transcript → validated SessionEvaluation
-│   ├── smoke.py          # real-API smoke test (needs ANTHROPIC_API_KEY)
-│   └── golden/           # hand-labeled golden set + format spec
+│   ├── runner.py         # JudgeRunner: transcript → validated SessionEvaluation (+retry)
+│   ├── metrics.py        # quadratic-weighted kappa, Spearman, MAE, confusion, bootstrap CI
+│   ├── golden.py         # loads the hand-labeled golden set
+│   ├── run_eval.py       # judge the golden set, report agreement (live)
+│   ├── smoke.py          # one-transcript live smoke test
+│   └── golden/           # golden set (seed.jsonl) + format spec
 ├── tests/                # offline unit tests (no network)
 └── pyproject.toml
 ```
@@ -41,9 +46,9 @@ Coming in later phases: `services/api/` (FastAPI gateway, ingestion, retrieval),
 ## Setup
 
 ```bash
-python3.12 -m venv .venv && source .venv/bin/activate
+python3.13 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-cp .env.example .env          # fill in ANTHROPIC_API_KEY for the live smoke test
+cp .env.example .env          # set JUDGE_PROVIDER + the matching API key
 ```
 
 ## Test
@@ -63,3 +68,13 @@ Optional live check — judges a built-in sample transcript end to end:
 #   set JUDGE_PROVIDER=claude and ANTHROPIC_API_KEY in .env
 python -m eval.smoke
 ```
+
+Agreement report — run the judge over the golden set and compare to the hand labels:
+
+```bash
+python -m eval.run_eval
+```
+
+Right now the golden set is a tiny seed (5 transcripts) and the numbers are only a
+sanity check. The real calibration comes once the full ~50-session golden set is
+labeled and judged by Claude.

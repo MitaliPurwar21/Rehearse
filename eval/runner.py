@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
+from pydantic import ValidationError
 
 from eval.schemas import JudgeMeta, SessionEvaluation
 from rehearse_core.llm.base import LLMProvider
@@ -23,6 +24,14 @@ from rehearse_core.llm.base import LLMProvider
 _EVAL_DIR = Path(__file__).resolve().parent
 _DEFAULT_PROMPT = _EVAL_DIR / "judge_prompt.md"
 _DEFAULT_RUBRIC = _EVAL_DIR / "rubric.yaml"
+
+# Tacked onto the message when a retry is needed. Weaker models sometimes skip the
+# quotes or drop a dimension; this nudges them to fix exactly that.
+_RETRY_HINT = (
+    "\n\nYour previous answer was rejected because it didn't match the required "
+    "format:\n{error}\nTry again. Score every competency on all four dimensions, and "
+    "include at least one verbatim quote for any dimension scored 2, 4, or 5."
+)
 
 
 @dataclass(frozen=True)
@@ -69,18 +78,35 @@ class JudgeRunner:
             f"{turns}\n"
         )
 
-    def judge(self, transcript: Transcript) -> SessionEvaluation:
-        result = self.provider.structured(
-            system=self.system,
-            user=self._render_user(transcript),
-            schema=SessionEvaluation,
-            temperature=self.temperature,
-            max_tokens=self.max_tokens,
+    def judge(self, transcript: Transcript, *, max_attempts: int = 3) -> SessionEvaluation:
+        base_user = self._render_user(transcript)
+        last_error: ValidationError | None = None
+
+        for _attempt in range(max_attempts):
+            user = base_user
+            if last_error is not None:
+                user = base_user + _RETRY_HINT.format(error=last_error)
+            try:
+                result = self.provider.structured(
+                    system=self.system,
+                    user=user,
+                    schema=SessionEvaluation,
+                    temperature=self.temperature,
+                    max_tokens=self.max_tokens,
+                )
+            except ValidationError as err:
+                last_error = err
+                continue
+
+            result.model_meta = JudgeMeta(
+                model_id=self.provider.model_id,
+                prompt_hash=self.prompt_hash,
+                temperature=self.temperature,
+                rubric_version=self.rubric_version,
+            )
+            return result
+
+        raise RuntimeError(
+            f"judge output failed schema validation after {max_attempts} attempts; "
+            f"last error:\n{last_error}"
         )
-        result.model_meta = JudgeMeta(
-            model_id=self.provider.model_id,
-            prompt_hash=self.prompt_hash,
-            temperature=self.temperature,
-            rubric_version=self.rubric_version,
-        )
-        return result
