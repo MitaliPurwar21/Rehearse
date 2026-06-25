@@ -11,7 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from eval.runner import Transcript
 
@@ -31,7 +31,11 @@ class GoldenSession(BaseModel):
     competencies: list[str]
     persona: str = "unspecified"
     turns: list[dict[str, str]]
-    gold: list[GoldCompetency]
+    gold: list[GoldCompetency] = Field(default_factory=list)  # empty until hand-labeled
+
+    @property
+    def is_labeled(self) -> bool:
+        return len(self.gold) == len(self.competencies)
 
     def to_transcript(self) -> Transcript:
         return Transcript(

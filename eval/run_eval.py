@@ -22,7 +22,15 @@ from eval.runner import JudgeRunner
 from rehearse_core.config import get_settings
 from rehearse_core.llm.factory import build_judge_provider
 
-_GOLDEN = Path(__file__).resolve().parent / "golden" / "seed.jsonl"
+_GOLDEN_DIR = Path(__file__).resolve().parent / "golden"
+
+
+def _golden_path() -> Path:
+    # Use your hand-labeled set once it exists; until then fall back to the seed.
+    labeled = _GOLDEN_DIR / "labeled.jsonl"
+    if labeled.exists() and labeled.stat().st_size > 0:
+        return labeled
+    return _GOLDEN_DIR / "seed.jsonl"
 
 
 def _print_row(name: str, a: AgreementStats) -> None:
@@ -34,9 +42,11 @@ def _print_row(name: str, a: AgreementStats) -> None:
 
 def main() -> None:
     settings = get_settings()
-    sessions = load_golden(_GOLDEN)
+    golden_path = _golden_path()
+    sessions = load_golden(golden_path)
     if not sessions:
-        raise SystemExit(f"No golden sessions found in {_GOLDEN}")
+        raise SystemExit(f"No golden sessions found in {golden_path}")
+    print(f"Golden set: {golden_path.name}")
 
     provider = build_judge_provider(settings)
     runner = JudgeRunner(

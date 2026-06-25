@@ -4,7 +4,9 @@ from pathlib import Path
 
 from eval.golden import DIMENSIONS, load_golden
 
-_SEED = Path(__file__).resolve().parents[1] / "eval" / "golden" / "seed.jsonl"
+_GOLDEN_DIR = Path(__file__).resolve().parents[1] / "eval" / "golden"
+_SEED = _GOLDEN_DIR / "seed.jsonl"
+_UNLABELED = _GOLDEN_DIR / "unlabeled.jsonl"
 
 
 def test_seed_loads() -> None:
@@ -33,3 +35,11 @@ def test_to_transcript_roundtrip() -> None:
     assert t.competencies == session.competencies
     assert t.turns[0][0] == "interviewer"
     assert isinstance(t.turns[0][1], str)
+
+
+def test_unlabeled_starter_parses_and_is_unlabeled() -> None:
+    sessions = load_golden(_UNLABELED)
+    assert len(sessions) == 6
+    # No gold scores yet, so nothing should count as labeled.
+    assert all(not s.is_labeled for s in sessions)
+    assert all(s.gold == [] for s in sessions)

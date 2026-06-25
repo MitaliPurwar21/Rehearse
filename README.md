@@ -31,10 +31,12 @@ rehearse/
 │   ├── schemas.py        # Pydantic judge output (self-validating)
 │   ├── runner.py         # JudgeRunner: transcript → validated SessionEvaluation (+retry)
 │   ├── metrics.py        # quadratic-weighted kappa, Spearman, MAE, confusion, bootstrap CI
-│   ├── golden.py         # loads the hand-labeled golden set
+│   ├── golden.py         # loads the golden set
+│   ├── generate.py       # synthesize transcripts to label (live)
+│   ├── label.py          # terminal tool to hand-score transcripts
 │   ├── run_eval.py       # judge the golden set, report agreement (live)
 │   ├── smoke.py          # one-transcript live smoke test
-│   └── golden/           # golden set (seed.jsonl) + format spec
+│   └── golden/           # seed.jsonl, unlabeled.jsonl, labeled.jsonl + format spec
 ├── tests/                # offline unit tests (no network)
 └── pyproject.toml
 ```
@@ -78,3 +80,18 @@ python -m eval.run_eval
 Right now the golden set is a tiny seed (5 transcripts) and the numbers are only a
 sanity check. The real calibration comes once the full ~50-session golden set is
 labeled and judged by Claude.
+
+## Building the golden set
+
+The golden set is interview transcripts with **human** scores — the ground truth the
+judge is measured against. Generating a candidate and scoring it are kept separate so
+we're never grading a model against itself.
+
+```bash
+python -m eval.generate --per-combo 3   # synthesize transcripts -> golden/unlabeled.jsonl
+python -m eval.label                     # score them by hand     -> golden/labeled.jsonl
+```
+
+`label.py` shows one transcript plus the rubric, takes four 1-5 scores per competency,
+hides the candidate type so it can't bias you, and lets you stop and resume anytime.
+Once `labeled.jsonl` exists, `run_eval` uses it automatically instead of the seed.
