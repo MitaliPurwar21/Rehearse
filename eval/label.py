@@ -68,8 +68,11 @@ def _label_session(session: GoldenSession) -> GoldenSession | None:
         print(f"  {turn['speaker'].upper()}: {turn['text']}")
 
     gold = []
-    for competency in session.competencies:
-        print(f"\n--- scoring: {competency} ---")
+    total = len(session.competencies)
+    for n, competency in enumerate(session.competencies, start=1):
+        print(f"\n--- competency {n} of {total}: {competency} ---")
+        print(f"    Score ONLY how well the candidate showed '{competency}'.")
+        print("    A great answer to a different question still scores low here.")
         scores: dict[str, int] = {}
         for dim in DIMENSIONS:
             value = _ask_score(dim)
