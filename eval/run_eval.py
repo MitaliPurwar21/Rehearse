@@ -71,6 +71,33 @@ def _judge_or_cache(runner: JudgeRunner, session: GoldenSession) -> tuple[Sessio
     return result, False
 
 
+def _pair_scores(
+    results: list[tuple[GoldenSession, SessionEvaluation]],
+) -> tuple[dict[str, list[int]], dict[str, list[int]], list[str]]:
+    """Line up gold and judge dimension scores by competency.
+
+    Match competency names case-insensitively — the judge sometimes title-cases
+    them ('RAG systems' -> 'RAG Systems'), and an exact match would silently drop
+    those, throwing away real data.
+    """
+    human: dict[str, list[int]] = defaultdict(list)
+    model: dict[str, list[int]] = defaultdict(list)
+    skipped: list[str] = []
+    for session, result in results:
+        judged = {c.competency.strip().casefold(): c for c in result.competency_evaluations}
+        for gold in session.gold:
+            comp = judged.get(gold.competency.strip().casefold())
+            if comp is None:
+                skipped.append(f"{gold.competency!r} in {session.session_id}")
+                continue
+            judge_dims = {d.dimension: d.score for d in comp.dimension_scores}
+            for dim in DIMENSIONS:
+                if dim in gold.dimension_scores and dim in judge_dims:
+                    human[dim].append(gold.dimension_scores[dim])
+                    model[dim].append(judge_dims[dim])
+    return human, model, skipped
+
+
 def _print_row(name: str, a: AgreementStats) -> None:
     print(
         f"{name:<14} n={a.n:<3} QWK={a.qwk:+.2f} [{a.qwk_ci_low:+.2f},{a.qwk_ci_high:+.2f}]"
@@ -112,20 +139,9 @@ def main() -> None:
         )
         raise SystemExit(1) from None
 
-    human: dict[str, list[int]] = defaultdict(list)
-    model: dict[str, list[int]] = defaultdict(list)
-    for session, result in results:
-        judged = {c.competency: c for c in result.competency_evaluations}
-        for gold in session.gold:
-            comp = judged.get(gold.competency)
-            if comp is None:
-                print(f"  ! judge skipped {gold.competency!r} in {session.session_id}")
-                continue
-            judge_dims = {d.dimension: d.score for d in comp.dimension_scores}
-            for dim in DIMENSIONS:
-                if dim in gold.dimension_scores and dim in judge_dims:
-                    human[dim].append(gold.dimension_scores[dim])
-                    model[dim].append(judge_dims[dim])
+    human, model, skipped = _pair_scores(results)
+    for note in skipped:
+        print(f"  ! judge skipped {note}")
 
     all_human = [v for dim in DIMENSIONS for v in human[dim]]
     all_model = [v for dim in DIMENSIONS for v in model[dim]]

@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 import eval.run_eval as run_eval
-from eval.golden import GoldenSession
+from eval.golden import GoldCompetency, GoldenSession
 from eval.runner import JudgeRunner
 from eval.schemas import CompetencyEvaluation, DimensionScore, SessionEvaluation
 from rehearse_core.llm.fake import FakeProvider
@@ -56,3 +56,28 @@ def test_judge_or_cache_misses_then_hits(tmp_path: Path, monkeypatch: pytest.Mon
 def test_cache_key_survives_slashes_in_model_id() -> None:
     path = run_eval._cache_path("t1", "meta-llama/llama-4", "abcdef0123456789")
     assert "/" not in path.name
+
+
+def test_pair_scores_matches_competency_case_insensitively() -> None:
+    # gold says "RAG systems"; the judge title-cased it to "RAG Systems".
+    session = GoldenSession(
+        session_id="t1",
+        split="validation",
+        job_description="jd",
+        competencies=["RAG systems"],
+        turns=[{"speaker": "interviewer", "text": "q"}],
+        gold=[
+            GoldCompetency(
+                competency="RAG systems",
+                dimension_scores={"relevance": 4, "depth": 2, "evidence": 2, "communication": 4},
+                competency_score=3.0,
+            )
+        ],
+    )
+    result = _canned()  # its competency is "RAG systems"; force the title-cased variant
+    result.competency_evaluations[0].competency = "RAG Systems"
+
+    human, model, skipped = run_eval._pair_scores([(session, result)])
+    assert skipped == []  # the case difference must not drop it
+    assert human["depth"] == [2]
+    assert model["depth"] == [2]
