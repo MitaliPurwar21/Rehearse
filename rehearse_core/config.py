@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     # --- Database ---
     database_url: str = "sqlite:///./rehearse.db"
 
+    # --- API ---
+    # Origins allowed to call the API from a browser (the Next.js dev server).
+    cors_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+
     # --- Observability (hooked up later) ---
     langfuse_public_key: str | None = None
     langfuse_secret_key: str | None = None

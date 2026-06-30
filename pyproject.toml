@@ -40,6 +40,7 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+extend-exclude = ["apps"]  # the Next.js frontend isn't Python
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
@@ -52,3 +53,4 @@ extend-immutable-calls = ["fastapi.Depends"]
 python_version = "3.12"
 strict = true
 ignore_missing_imports = true
+exclude = "apps/"

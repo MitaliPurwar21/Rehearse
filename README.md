@@ -73,13 +73,16 @@ rehearse/
 │   ├── db.py             #   engine + session (SQLite by default)
 │   ├── schemas.py        #   request/response shapes
 │   └── deps.py           #   injectable DB + provider (overridden in tests)
+├── apps/web/             # Next.js frontend (paste JD -> answer -> scores)
+│   ├── app/page.tsx      #   the UI flow
+│   └── lib/api.ts        #   client for the FastAPI backend
 ├── .github/workflows/    # CI: ruff, mypy, pytest, eval regression gate
 ├── tests/                # offline unit tests (no network)
 └── pyproject.toml
 ```
 
-Coming in later phases: `apps/web/` (Next.js + LiveKit), `apps/agent/` (LiveKit voice
-worker), a FastAPI gateway, a database, and deployment.
+Coming in later phases: `apps/agent/` (LiveKit voice worker for the spoken interview)
+and deployment to a live URL.
 
 ## Setup
 
@@ -143,7 +146,23 @@ uvicorn services.api.main:app --reload      # http://127.0.0.1:8000/docs for int
 | `POST /sessions/{id}/evaluate` | Run the judge on the transcript, persist the scores |
 | `GET /sessions/{id}` | Fetch a session with its turns and evaluation |
 
-Voice capture and the web UI are later phases; this is the backend they'll call.
+Voice capture is a later phase; this is the backend the web UI calls.
+
+## Web UI
+
+A Next.js frontend over the backend: paste a job description, answer a question, and see
+the judge's scores.
+
+```bash
+# 1. run the backend (in one terminal)
+uvicorn services.api.main:app --reload
+
+# 2. run the frontend (in another)
+cd apps/web
+npm install
+cp .env.local.example .env.local      # points at http://localhost:8000
+npm run dev                            # open http://localhost:3000
+```
 
 ## Building the golden set
 
