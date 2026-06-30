@@ -15,3 +15,6 @@ venv/
 
 # OS
 .DS_Store
+
+# Personal learning doc — not committed
+docs/TEACH_MITALI.md

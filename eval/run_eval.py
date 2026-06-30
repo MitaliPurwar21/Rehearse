@@ -17,9 +17,9 @@ kappa / Spearman / MAE per dimension and overall.
 from __future__ import annotations
 
 import time
-from collections import defaultdict
 from pathlib import Path
 
+from eval.agreement import Results, golden_path, pair_scores
 from eval.golden import DIMENSIONS, GoldenSession, load_golden
 from eval.metrics import AgreementStats, compute_agreement, confusion
 from eval.runner import JudgeRunner
@@ -43,16 +43,7 @@ try:
 except ImportError:  # pragma: no cover
     pass
 
-_GOLDEN_DIR = Path(__file__).resolve().parent / "golden"
 _CACHE_DIR = Path(__file__).resolve().parent / ".cache" / "judgements"
-
-
-def _golden_path() -> Path:
-    # Use your hand-labeled set once it exists; until then fall back to the seed.
-    labeled = _GOLDEN_DIR / "labeled.jsonl"
-    if labeled.exists() and labeled.stat().st_size > 0:
-        return labeled
-    return _GOLDEN_DIR / "seed.jsonl"
 
 
 def _cache_path(session_id: str, model_id: str, prompt_hash: str) -> Path:
@@ -71,58 +62,10 @@ def _judge_or_cache(runner: JudgeRunner, session: GoldenSession) -> tuple[Sessio
     return result, False
 
 
-def _pair_scores(
-    results: list[tuple[GoldenSession, SessionEvaluation]],
-) -> tuple[dict[str, list[int]], dict[str, list[int]], list[str]]:
-    """Line up gold and judge dimension scores by competency.
-
-    Match competency names case-insensitively — the judge sometimes title-cases
-    them ('RAG systems' -> 'RAG Systems'), and an exact match would silently drop
-    those, throwing away real data.
-    """
-    human: dict[str, list[int]] = defaultdict(list)
-    model: dict[str, list[int]] = defaultdict(list)
-    skipped: list[str] = []
-    for session, result in results:
-        judged = {c.competency.strip().casefold(): c for c in result.competency_evaluations}
-        for gold in session.gold:
-            comp = judged.get(gold.competency.strip().casefold())
-            if comp is None:
-                skipped.append(f"{gold.competency!r} in {session.session_id}")
-                continue
-            judge_dims = {d.dimension: d.score for d in comp.dimension_scores}
-            for dim in DIMENSIONS:
-                if dim in gold.dimension_scores and dim in judge_dims:
-                    human[dim].append(gold.dimension_scores[dim])
-                    model[dim].append(judge_dims[dim])
-    return human, model, skipped
-
-
-def _print_row(name: str, a: AgreementStats) -> None:
-    print(
-        f"{name:<14} n={a.n:<3} QWK={a.qwk:+.2f} [{a.qwk_ci_low:+.2f},{a.qwk_ci_high:+.2f}]"
-        f"  rho={a.spearman:+.2f}  MAE={a.mae:.2f}  exact={a.exact_match:.0%}"
-    )
-
-
-def main() -> None:
-    settings = get_settings()
-    golden_path = _golden_path()
-    sessions = load_golden(golden_path)
-    if not sessions:
-        raise SystemExit(f"No golden sessions found in {golden_path}")
-
-    provider = build_judge_provider(settings)
-    runner = JudgeRunner(
-        provider,
-        temperature=settings.judge_temperature,
-        max_tokens=settings.judge_max_tokens,
-    )
-
-    print(f"Golden set: {golden_path.name}")
-    print(f"Judging {len(sessions)} sessions with {provider.model_id} (cached results reused)...")
-
-    results: list[tuple[GoldenSession, SessionEvaluation]] = []
+def judge_all(runner: JudgeRunner, sessions: list[GoldenSession]) -> Results:
+    """Judge every session (reusing cache), printing progress. Exits cleanly on a
+    rate limit — cached work is kept, so re-running resumes."""
+    results: Results = []
     try:
         for i, session in enumerate(sessions, start=1):
             label = f"  [{i}/{len(sessions)}] {session.session_id} ({session.persona}) ... "
@@ -134,12 +77,42 @@ def main() -> None:
     except _RATE_LIMIT_ERRORS:
         print(
             f"\n\nRate limit hit after {len(results)}/{len(sessions)} sessions. Everything "
-            "judged so far is cached — re-run `python -m eval.run_eval` to continue (wait for "
-            "the daily cap to reset first if you're on the free tier)."
+            "judged so far is cached — re-run to continue (wait for the daily cap to reset "
+            "first if you're on the free tier)."
         )
         raise SystemExit(1) from None
+    return results
 
-    human, model, skipped = _pair_scores(results)
+
+def build_runner() -> JudgeRunner:
+    settings = get_settings()
+    provider = build_judge_provider(settings)
+    return JudgeRunner(
+        provider,
+        temperature=settings.judge_temperature,
+        max_tokens=settings.judge_max_tokens,
+    )
+
+
+def _print_row(name: str, a: AgreementStats) -> None:
+    print(
+        f"{name:<14} n={a.n:<3} QWK={a.qwk:+.2f} [{a.qwk_ci_low:+.2f},{a.qwk_ci_high:+.2f}]"
+        f"  rho={a.spearman:+.2f}  MAE={a.mae:.2f}  exact={a.exact_match:.0%}"
+    )
+
+
+def main() -> None:
+    path = golden_path()
+    sessions = load_golden(path)
+    if not sessions:
+        raise SystemExit(f"No golden sessions found in {path}")
+
+    runner = build_runner()
+    print(f"Golden set: {path.name}")
+    print(f"Judging {len(sessions)} sessions with {runner.provider.model_id} (cache reused)...")
+    results = judge_all(runner, sessions)
+
+    human, model, skipped = pair_scores(results)
     for note in skipped:
         print(f"  ! judge skipped {note}")
 

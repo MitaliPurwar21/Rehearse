@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 import eval.run_eval as run_eval
+from eval.agreement import pair_scores
 from eval.golden import GoldCompetency, GoldenSession
 from eval.runner import JudgeRunner
 from eval.schemas import CompetencyEvaluation, DimensionScore, SessionEvaluation
@@ -77,7 +78,7 @@ def test_pair_scores_matches_competency_case_insensitively() -> None:
     result = _canned()  # its competency is "RAG systems"; force the title-cased variant
     result.competency_evaluations[0].competency = "RAG Systems"
 
-    human, model, skipped = run_eval._pair_scores([(session, result)])
+    human, model, skipped = pair_scores([(session, result)])
     assert skipped == []  # the case difference must not drop it
     assert human["depth"] == [2]
     assert model["depth"] == [2]

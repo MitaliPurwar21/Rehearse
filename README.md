@@ -10,8 +10,29 @@ calibrated against a hand-labeled golden set, with the agreement actually measur
 (quadratic-weighted Cohen's κ, Spearman ρ) and a prompt-regression gate in CI so the
 grader can't drift unnoticed.
 
-> Status: early build. I'm building the evaluation harness first because it's the
-> hardest part to fake and the most worth getting right. Full roadmap in `docs/` (soon).
+> Status: the evaluation harness is built and calibrated. The rest of the product
+> (JD ingestion, voice interview, database, web UI, deploy) is upcoming. I built the
+> harness first because it's the hardest part to fake and the most worth getting right.
+
+## Results
+
+The judge (Claude Sonnet) was calibrated against a hand-labeled golden set of **51
+technical interviews / 408 individual scores** (ML engineer, data scientist, backend).
+
+| | Agreement (judge vs. human) |
+|---|---|
+| **Overall (quadratic-weighted κ)** | **0.83** (95% CI 0.78–0.86) |
+| Spearman ρ | 0.85 |
+| Mean abs. error | 0.51 (on a 1–5 scale) |
+| Exact match | 59% |
+
+Per dimension: depth **0.90**, evidence 0.82, communication 0.73, relevance 0.69.
+~92% of disagreements are off by a single point; the main systematic gap is that the
+human labeler scores slightly more leniently than the judge at the top of the scale.
+
+Honest scope: a **single** human labeler, validated on **technical** roles only (where
+those labels are credible). The rubric and harness are role-agnostic; extending
+validation to other domains needs a domain-expert labeler.
 
 ## Repo layout
 
@@ -31,12 +52,17 @@ rehearse/
 │   ├── schemas.py        # Pydantic judge output (self-validating)
 │   ├── runner.py         # JudgeRunner: transcript → validated SessionEvaluation (+retry)
 │   ├── metrics.py        # quadratic-weighted kappa, Spearman, MAE, confusion, bootstrap CI
+│   ├── agreement.py      # pair gold vs judge scores + summarize (provider-free)
 │   ├── golden.py         # loads the golden set
 │   ├── generate.py       # synthesize transcripts to label (live)
 │   ├── label.py          # terminal tool to hand-score transcripts
-│   ├── run_eval.py       # judge the golden set, report agreement (live)
+│   ├── run_eval.py       # judge the golden set, report agreement (live, cached)
+│   ├── freeze_baseline.py# lock in the current result as the CI baseline
+│   ├── check_regression.py # CI gate: fail if agreement drops (offline)
+│   ├── baseline.json     # the frozen agreement numbers the gate checks
 │   ├── smoke.py          # one-transcript live smoke test
-│   └── golden/           # seed.jsonl, unlabeled.jsonl, labeled.jsonl + format spec
+│   └── golden/           # labeled.jsonl, unlabeled.jsonl, judgements.jsonl, seed.jsonl
+├── .github/workflows/    # CI: ruff, mypy, pytest, eval regression gate
 ├── tests/                # offline unit tests (no network)
 └── pyproject.toml
 ```
@@ -77,9 +103,8 @@ Agreement report — run the judge over the golden set and compare to the hand l
 python -m eval.run_eval
 ```
 
-Right now the golden set is a tiny seed (5 transcripts) and the numbers are only a
-sanity check. The real calibration comes once the full ~50-session golden set is
-labeled and judged by Claude.
+Judge results are cached, so re-runs are instant and a rate limit mid-run doesn't lose
+progress — it resumes where it stopped.
 
 ## Building the golden set
 
@@ -95,3 +120,19 @@ python -m eval.label                     # score them by hand     -> golden/labe
 `label.py` shows one transcript plus the rubric, takes four 1-5 scores per competency,
 hides the candidate type so it can't bias you, and lets you stop and resume anytime.
 Once `labeled.jsonl` exists, `run_eval` uses it automatically instead of the seed.
+
+## Regression gate (CI)
+
+A grader is only useful if it doesn't silently get worse. So the agreement is frozen
+as a baseline and checked on every change:
+
+```bash
+python -m eval.freeze_baseline    # re-judge the golden set, lock in baseline.json (live)
+python -m eval.check_regression   # recompute agreement from frozen outputs, compare (offline)
+```
+
+`check_regression` runs in CI (no API key) and fails the build if overall κ drops more
+than 0.05 below baseline, or any dimension's error rises more than 0.30 — catching
+scoring/metric bugs (like a competency-matching change that quietly drops data). A
+*prompt* change is handled deliberately: re-run `freeze_baseline` and the new numbers
+show up in the git diff for review.

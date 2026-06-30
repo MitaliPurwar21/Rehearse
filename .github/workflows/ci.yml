@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Lint
+        run: ruff check .
+      - name: Types
+        run: mypy .
+      - name: Tests
+        run: pytest
+      # The eval gate: recompute judge-vs-human agreement from frozen judgements and
+      # fail if it regressed past tolerance. No API key needed — runs fully offline.
+      - name: Eval regression gate
+        run: python -m eval.check_regression

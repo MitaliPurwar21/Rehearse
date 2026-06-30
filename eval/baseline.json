@@ -1,0 +1,47 @@
+{
+  "n_pairs": 408,
+  "overall": {
+    "n": 408,
+    "qwk": 0.827,
+    "mae": 0.5147,
+    "spearman": 0.8533,
+    "exact": 0.5858
+  },
+  "dimensions": {
+    "relevance": {
+      "n": 102,
+      "qwk": 0.6851,
+      "mae": 0.6176,
+      "spearman": 0.7108,
+      "exact": 0.5882
+    },
+    "depth": {
+      "n": 102,
+      "qwk": 0.8992,
+      "mae": 0.3431,
+      "spearman": 0.9154,
+      "exact": 0.6765
+    },
+    "evidence": {
+      "n": 102,
+      "qwk": 0.8178,
+      "mae": 0.549,
+      "spearman": 0.7663,
+      "exact": 0.5392
+    },
+    "communication": {
+      "n": 102,
+      "qwk": 0.7304,
+      "mae": 0.549,
+      "spearman": 0.7899,
+      "exact": 0.5392
+    }
+  },
+  "meta": {
+    "model_id": "claude-sonnet-4-6",
+    "prompt_hash": "244028d7e826b263787c4cb8cf024a61c42dc8230869bf064b24cd45564772f2",
+    "golden_file": "labeled.jsonl",
+    "n_sessions": 51,
+    "frozen_at": "2026-06-30T18:57:21.604722+00:00"
+  }
+}

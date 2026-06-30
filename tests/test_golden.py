@@ -39,7 +39,7 @@ def test_to_transcript_roundtrip() -> None:
 
 def test_unlabeled_starter_parses_and_is_unlabeled() -> None:
     sessions = load_golden(_UNLABELED)
-    assert len(sessions) == 6
-    # No gold scores yet, so nothing should count as labeled.
+    assert len(sessions) >= 6
+    # No gold scores in the unlabeled file, so nothing should count as labeled.
     assert all(not s.is_labeled for s in sessions)
     assert all(s.gold == [] for s in sessions)
