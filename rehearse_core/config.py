@@ -34,8 +34,13 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./rehearse.db"
 
     # --- API ---
-    # Origins allowed to call the API from a browser (the Next.js dev server).
-    cors_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    # Browser origins allowed to call the API, comma-separated (a plain string so it's
+    # easy to set in a hosting dashboard, e.g. CORS_ORIGINS=https://app.vercel.app).
+    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
     # --- Observability (hooked up later) ---
     langfuse_public_key: str | None = None

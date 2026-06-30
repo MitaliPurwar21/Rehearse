@@ -164,6 +164,12 @@ cp .env.local.example .env.local      # points at http://localhost:8000
 npm run dev                            # open http://localhost:3000
 ```
 
+## Deploy
+
+Backend on Render (Docker), frontend on Vercel — both free tier. A `render.yaml`
+blueprint and `Dockerfile` are included; step-by-step in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+SQLite by default; set `DATABASE_URL` to a Postgres URL for persistence.
+
 ## Building the golden set
 
 The golden set is interview transcripts with **human** scores — the ground truth the

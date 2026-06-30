@@ -1,0 +1,15 @@
+# Keep the backend image small — exclude the frontend, envs, caches, and dev cruft.
+.venv/
+apps/
+.git/
+.github/
+docs/
+tests/
+**/__pycache__/
+*.db
+.env
+.env.local
+eval/.cache/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/

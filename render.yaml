@@ -1,0 +1,18 @@
+# Render blueprint for the backend. In Render: New > Blueprint, point it at this repo.
+# Secrets (sync: false) are set in the dashboard, never committed.
+services:
+  - type: web
+    name: rehearse-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: JUDGE_PROVIDER
+        value: claude
+      - key: ANTHROPIC_API_KEY
+        sync: false   # paste your Claude key in the dashboard
+      - key: CORS_ORIGINS
+        sync: false   # set to your Vercel URL, e.g. https://rehearse.vercel.app
+      - key: DATABASE_URL
+        sync: false   # optional: a Postgres URL for persistence; omit to use SQLite
