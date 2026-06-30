@@ -68,8 +68,8 @@ rehearse/
 │   ├── cli.py            #   demo: print competencies for a JD
 │   └── sample_jd.txt     #   an example to try it on
 ├── services/api/         # FastAPI gateway + persistence
-│   ├── main.py           #   routes: POST /jobs, GET /jobs, GET /jobs/{id}
-│   ├── models.py         #   SQLAlchemy tables (Job, Competency)
+│   ├── main.py           #   routes: jobs, sessions, evaluate
+│   ├── models.py         #   tables: Job, Competency, Session, Turn, Evaluation, Score
 │   ├── db.py             #   engine + session (SQLite by default)
 │   ├── schemas.py        #   request/response shapes
 │   └── deps.py           #   injectable DB + provider (overridden in tests)
@@ -128,21 +128,22 @@ cat my_jd.txt | python -m ingestion.cli
 
 ## API
 
-A FastAPI service stores jobs and their extracted competencies (SQLite by default).
+A FastAPI service over the whole backend loop (SQLite by default):
+**paste a JD → competencies → submit a transcript → judge scores it → persisted.**
 
 ```bash
-uvicorn services.api.main:app --reload      # http://127.0.0.1:8000/docs for the API docs
-
-# create a job from a JD (runs ingestion, persists the result):
-curl -X POST localhost:8000/jobs -H 'Content-Type: application/json' \
-  -d '{"job_description": "Senior ML Engineer building RAG systems..."}'
-
-curl localhost:8000/jobs            # list stored jobs
-curl localhost:8000/jobs/1          # fetch one
+uvicorn services.api.main:app --reload      # http://127.0.0.1:8000/docs for interactive docs
 ```
 
-Interview and scoring endpoints come in later phases; the data model is built to hang
-sessions and evaluations off a job.
+| Endpoint | Does |
+|---|---|
+| `POST /jobs` | Extract competencies from a JD (ingestion) and store the job |
+| `GET /jobs`, `GET /jobs/{id}` | List / fetch stored jobs |
+| `POST /jobs/{id}/sessions` | Store an interview transcript (turns) under a job |
+| `POST /sessions/{id}/evaluate` | Run the judge on the transcript, persist the scores |
+| `GET /sessions/{id}` | Fetch a session with its turns and evaluation |
+
+Voice capture and the web UI are later phases; this is the backend they'll call.
 
 ## Building the golden set
 

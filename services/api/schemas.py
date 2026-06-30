@@ -27,3 +27,45 @@ class JobOut(BaseModel):
     role_title: str
     seniority: str | None
     competencies: list[CompetencyOut]
+
+
+class TurnIn(BaseModel):
+    speaker: str  # "interviewer" or "candidate"
+    text: str
+
+
+class SessionCreate(BaseModel):
+    turns: list[TurnIn]
+
+
+class TurnOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    speaker: str
+    text: str
+
+
+class CompetencyScoreOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    competency: str
+    score: float
+    summary_feedback: str
+
+
+class EvaluationOut(BaseModel):
+    # model_id is fine as a field name; opt out of pydantic's "model_" guard.
+    model_config = ConfigDict(from_attributes=True, protected_namespaces=())
+
+    overall_feedback: str
+    model_id: str
+    competency_scores: list[CompetencyScoreOut]
+
+
+class SessionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    job_id: int
+    turns: list[TurnOut]
+    evaluation: EvaluationOut | None = None
