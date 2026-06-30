@@ -1,0 +1,22 @@
+Senior Machine Learning Engineer — Search & Retrieval
+
+We're hiring a Senior ML Engineer to own our retrieval-augmented generation stack that
+powers in-product question answering over millions of customer documents.
+
+What you'll do:
+- Design and run the RAG pipeline end to end: chunking, embeddings, vector search,
+  re-ranking, and prompt construction.
+- Build offline evaluation sets and own answer-quality metrics; nothing ships without a
+  measured improvement.
+- Debug production incidents — latency spikes, retrieval misses, hallucinations — and
+  drive root-cause fixes.
+- Work with product and support teams, translating model behavior into plain language and
+  setting realistic expectations.
+
+What we're looking for:
+- Strong Python and experience operating ML systems in production, not just notebooks.
+- Hands-on with vector databases and modern embedding models.
+- A rigorous, measurement-first mindset.
+- Clear communication with non-technical stakeholders.
+
+Nice to have: experience with LLM observability and cost/latency optimization.

@@ -26,7 +26,7 @@ from typing import Literal, TypedDict
 from pydantic import BaseModel
 
 from rehearse_core.config import get_settings
-from rehearse_core.llm.factory import build_judge_provider  # same provider seam as the judge
+from rehearse_core.llm.factory import build_provider  # same provider seam as the judge
 
 _OUT = Path(__file__).resolve().parent / "golden" / "unlabeled.jsonl"
 
@@ -138,7 +138,7 @@ def main() -> None:
     args = parser.parse_args()
 
     settings = get_settings()
-    provider = build_judge_provider(settings)
+    provider = build_provider(settings)
     rng = random.Random(args.seed)
     system = _system()
     idx = _next_index(_OUT)

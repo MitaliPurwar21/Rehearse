@@ -25,7 +25,7 @@ from eval.metrics import AgreementStats, compute_agreement, confusion
 from eval.runner import JudgeRunner
 from eval.schemas import SessionEvaluation
 from rehearse_core.config import get_settings
-from rehearse_core.llm.factory import build_judge_provider
+from rehearse_core.llm.factory import build_provider
 
 # Catch whichever provider's rate-limit error is installed, without hard-coupling
 # this module to a specific SDK.
@@ -86,7 +86,7 @@ def judge_all(runner: JudgeRunner, sessions: list[GoldenSession]) -> Results:
 
 def build_runner() -> JudgeRunner:
     settings = get_settings()
-    provider = build_judge_provider(settings)
+    provider = build_provider(settings)
     return JudgeRunner(
         provider,
         temperature=settings.judge_temperature,

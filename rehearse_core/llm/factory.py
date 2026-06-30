@@ -1,8 +1,8 @@
-"""Picks the judge provider from settings.
+"""Picks the LLM provider from settings.
 
-One place to choose, so the smoke test and the real harness pick the same way.
-Concrete providers are imported lazily — you only need the SDK for the one you
-actually use.
+One place to choose, so everything (judge, ingestion, the smoke test) picks the same
+way. Concrete providers are imported lazily — you only need the SDK for the one you
+actually use. For now the judge and ingestion share one provider/model setting.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from rehearse_core.config import Settings
 from rehearse_core.llm.base import LLMProvider
 
 
-def build_judge_provider(settings: Settings) -> LLMProvider:
+def build_provider(settings: Settings) -> LLMProvider:
     if settings.judge_provider == "groq":
         from rehearse_core.llm.groq import GroqProvider
 

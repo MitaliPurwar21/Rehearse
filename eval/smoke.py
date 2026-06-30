@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from eval.runner import JudgeRunner, Transcript
 from rehearse_core.config import get_settings
-from rehearse_core.llm.factory import build_judge_provider
+from rehearse_core.llm.factory import build_provider
 
 _SAMPLE = Transcript(
     job_description=(
@@ -35,7 +35,7 @@ _SAMPLE = Transcript(
 
 def main() -> None:
     settings = get_settings()
-    provider = build_judge_provider(settings)  # raises if the chosen provider's key is missing
+    provider = build_provider(settings)  # raises if the chosen provider's key is missing
     runner = JudgeRunner(
         provider,
         temperature=settings.judge_temperature,

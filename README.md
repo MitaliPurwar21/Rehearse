@@ -62,14 +62,18 @@ rehearse/
 │   ├── baseline.json     # the frozen agreement numbers the gate checks
 │   ├── smoke.py          # one-transcript live smoke test
 │   └── golden/           # labeled.jsonl, unlabeled.jsonl, judgements.jsonl, seed.jsonl
+├── ingestion/            # job description -> competencies
+│   ├── schemas.py        #   JobProfile / Competency (validated)
+│   ├── extract.py        #   extract_competencies(jd, provider)
+│   ├── cli.py            #   demo: print competencies for a JD
+│   └── sample_jd.txt     #   an example to try it on
 ├── .github/workflows/    # CI: ruff, mypy, pytest, eval regression gate
 ├── tests/                # offline unit tests (no network)
 └── pyproject.toml
 ```
 
-Coming in later phases: `services/api/` (FastAPI gateway, ingestion, retrieval),
-`apps/web/` (Next.js + LiveKit), `apps/agent/` (LiveKit voice worker), `infra/`
-(Docker, GitHub Actions).
+Coming in later phases: `apps/web/` (Next.js + LiveKit), `apps/agent/` (LiveKit voice
+worker), a FastAPI gateway, a database, and deployment.
 
 ## Setup
 
@@ -105,6 +109,16 @@ python -m eval.run_eval
 
 Judge results are cached, so re-runs are instant and a rate limit mid-run doesn't lose
 progress — it resumes where it stopped.
+
+## Ingestion: job description → competencies
+
+Paste (or pipe) a job description and the model extracts the competencies an interview
+should assess — schema-constrained, grounded in the JD, no generic filler.
+
+```bash
+python -m ingestion.cli ingestion/sample_jd.txt
+cat my_jd.txt | python -m ingestion.cli
+```
 
 ## Building the golden set
 
