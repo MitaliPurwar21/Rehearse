@@ -67,6 +67,12 @@ rehearse/
 │   ├── extract.py        #   extract_competencies(jd, provider)
 │   ├── cli.py            #   demo: print competencies for a JD
 │   └── sample_jd.txt     #   an example to try it on
+├── services/api/         # FastAPI gateway + persistence
+│   ├── main.py           #   routes: POST /jobs, GET /jobs, GET /jobs/{id}
+│   ├── models.py         #   SQLAlchemy tables (Job, Competency)
+│   ├── db.py             #   engine + session (SQLite by default)
+│   ├── schemas.py        #   request/response shapes
+│   └── deps.py           #   injectable DB + provider (overridden in tests)
 ├── .github/workflows/    # CI: ruff, mypy, pytest, eval regression gate
 ├── tests/                # offline unit tests (no network)
 └── pyproject.toml
@@ -119,6 +125,24 @@ should assess — schema-constrained, grounded in the JD, no generic filler.
 python -m ingestion.cli ingestion/sample_jd.txt
 cat my_jd.txt | python -m ingestion.cli
 ```
+
+## API
+
+A FastAPI service stores jobs and their extracted competencies (SQLite by default).
+
+```bash
+uvicorn services.api.main:app --reload      # http://127.0.0.1:8000/docs for the API docs
+
+# create a job from a JD (runs ingestion, persists the result):
+curl -X POST localhost:8000/jobs -H 'Content-Type: application/json' \
+  -d '{"job_description": "Senior ML Engineer building RAG systems..."}'
+
+curl localhost:8000/jobs            # list stored jobs
+curl localhost:8000/jobs/1          # fetch one
+```
+
+Interview and scoring endpoints come in later phases; the data model is built to hang
+sessions and evaluations off a job.
 
 ## Building the golden set
 

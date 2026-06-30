@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     judge_temperature: float = 0.0
     judge_max_tokens: int = 4096
 
+    # --- Database ---
+    database_url: str = "sqlite:///./rehearse.db"
+
     # --- Observability (hooked up later) ---
     langfuse_public_key: str | None = None
     langfuse_secret_key: str | None = None
