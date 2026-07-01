@@ -69,3 +69,11 @@ class SessionOut(BaseModel):
     job_id: int
     turns: list[TurnOut]
     evaluation: EvaluationOut | None = None
+
+
+class LiveToken(BaseModel):
+    """What the browser needs to join the voice room."""
+
+    url: str    # the LiveKit server URL (wss://...)
+    token: str  # a short-lived join token
+    room: str   # the room name (encodes the job id for the agent)

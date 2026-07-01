@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     # --- Database ---
     database_url: str = "sqlite:///./rehearse.db"
 
+    # --- LiveKit (voice interview) ---
+    livekit_url: str | None = None  # wss://your-project.livekit.cloud
+    livekit_api_key: str | None = None
+    livekit_api_secret: str | None = None
+
     # --- API ---
     # Browser origins allowed to call the API, comma-separated (a plain string so it's
     # easy to set in a hosting dashboard, e.g. CORS_ORIGINS=https://app.vercel.app).

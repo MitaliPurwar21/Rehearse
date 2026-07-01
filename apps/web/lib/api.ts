@@ -44,3 +44,20 @@ export function createSession(jobId: number, turns: Turn[]): Promise<{ id: numbe
 export function evaluateSession(sessionId: number): Promise<Evaluation> {
   return send<Evaluation>(`/sessions/${sessionId}/evaluate`);
 }
+
+export type LiveToken = { url: string; token: string; room: string };
+export type Session = { id: number; job_id: number; evaluation: Evaluation | null };
+
+async function getJson<T>(path: string): Promise<T> {
+  const res = await fetch(`${API}${path}`);
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  return res.json() as Promise<T>;
+}
+
+export function getLiveToken(jobId: number): Promise<LiveToken> {
+  return send<LiveToken>(`/jobs/${jobId}/live-token`);
+}
+
+export function getJobSessions(jobId: number): Promise<Session[]> {
+  return getJson<Session[]>(`/jobs/${jobId}/sessions`);
+}

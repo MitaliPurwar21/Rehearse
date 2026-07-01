@@ -79,13 +79,17 @@ rehearse/
 ├── apps/web/             # Next.js frontend (paste JD -> answer -> scores)
 │   ├── app/page.tsx      #   the UI flow
 │   └── lib/api.ts        #   client for the FastAPI backend
+├── apps/agent/           # LiveKit voice worker (spoken interview -> judge)
+│   └── agent.py          #   competency-grounded interviewer, posts transcript for scoring
 ├── .github/workflows/    # CI: ruff, mypy, pytest, eval regression gate
 ├── tests/                # offline unit tests (no network)
 └── pyproject.toml
 ```
 
-Coming in later phases: `apps/agent/` (LiveKit voice worker for the spoken interview)
-and deployment to a live URL.
+The voice interview (`apps/agent/`) is a LiveKit worker that conducts the interview by
+voice, grounded in the job's competencies, and posts the transcript back for the judge to
+score — see [apps/agent/README.md](apps/agent/README.md). It runs against LiveKit +
+Deepgram; wiring it into the web UI (join the room from the site) is the remaining step.
 
 ## Setup
 
@@ -153,8 +157,10 @@ Voice capture is a later phase; this is the backend the web UI calls.
 
 ## Web UI
 
-A Next.js frontend over the backend: paste a job description, answer a question, and see
-the judge's scores.
+A Next.js frontend over the backend: paste a job description, then either **type** an
+answer or do a **voice** interview in the browser — and see the judge's scores on the same
+page. (Voice mode needs the agent running and `LIVEKIT_*` set on the backend; see
+[apps/agent/README.md](apps/agent/README.md).)
 
 ```bash
 # 1. run the backend (in one terminal)

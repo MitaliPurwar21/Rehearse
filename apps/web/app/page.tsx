@@ -8,8 +8,11 @@ import {
   type Evaluation,
   type Job,
 } from "@/lib/api";
+import { VoiceInterview } from "@/components/VoiceInterview";
 
 const QUESTION = "Walk me through your most relevant project for this role — what you built, the hardest problem, and how you measured success.";
+
+type Mode = "voice" | "type" | null;
 
 function scoreColor(score: number): string {
   if (score >= 3.5) return "var(--good)";
@@ -20,6 +23,7 @@ function scoreColor(score: number): string {
 export default function Home() {
   const [jd, setJd] = useState("");
   const [job, setJob] = useState<Job | null>(null);
+  const [mode, setMode] = useState<Mode>(null);
   const [answer, setAnswer] = useState("");
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
   const [loading, setLoading] = useState(false);
@@ -54,17 +58,10 @@ export default function Home() {
     }
   }
 
-  function reset() {
-    setJob(null);
-    setAnswer("");
-    setEvaluation(null);
-    setError("");
-  }
-
   return (
     <main>
       <h1>Rehearse</h1>
-      <p className="muted">Paste a job description, answer a question, get scored by a calibrated AI judge.</p>
+      <p className="muted">Paste a job description, do a mock interview, get scored by a calibrated AI judge.</p>
 
       {!job && (
         <div className="panel">
@@ -93,9 +90,21 @@ export default function Home() {
         </div>
       )}
 
-      {job && !evaluation && (
+      {job && !mode && (
         <div className="panel">
-          <strong>2. Answer the question</strong>
+          <strong>2. How do you want to practice?</strong>
+          <div style={{ marginTop: 12, display: "flex", gap: 12 }}>
+            <button onClick={() => setMode("voice")}>🎙️ Voice interview</button>
+            <button onClick={() => setMode("type")}>⌨️ Type an answer</button>
+          </div>
+        </div>
+      )}
+
+      {job && mode === "voice" && <VoiceInterview jobId={job.id} />}
+
+      {job && mode === "type" && !evaluation && (
+        <div className="panel">
+          <strong>Answer the question</strong>
           <p className="muted" style={{ marginTop: 8 }}>{QUESTION}</p>
           <textarea
             value={answer}
@@ -124,7 +133,6 @@ export default function Home() {
           </div>
           <p style={{ marginTop: 16 }}>{evaluation.overall_feedback}</p>
           <p className="muted" style={{ fontSize: 12 }}>Scored by {evaluation.model_id}</p>
-          <button onClick={reset}>Try another</button>
         </div>
       )}
 

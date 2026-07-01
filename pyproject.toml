@@ -19,6 +19,7 @@ dependencies = [
     "fastapi>=0.110",
     "uvicorn>=0.29",
     "sqlalchemy>=2.0",
+    "livekit-api>=0.8",
 ]
 
 [project.optional-dependencies]

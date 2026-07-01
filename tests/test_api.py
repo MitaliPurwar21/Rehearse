@@ -152,6 +152,26 @@ def test_evaluate_unknown_session_404(client: TestClient) -> None:
     assert client.post("/sessions/999/evaluate").status_code == 404
 
 
+def test_live_token_requires_livekit_config(client: TestClient) -> None:
+    # No LiveKit env is set in tests, so the voice endpoint should 503, not crash.
+    job_id = _make_job(client)
+    assert client.post(f"/jobs/{job_id}/live-token").status_code == 503
+
+
+def test_list_job_sessions(client: TestClient) -> None:
+    job_id = _make_job(client)
+    turns = {
+        "turns": [
+            {"speaker": "interviewer", "text": "q"},
+            {"speaker": "candidate", "text": "a"},
+        ]
+    }
+    client.post(f"/jobs/{job_id}/sessions", json=turns)
+    listed = client.get(f"/jobs/{job_id}/sessions")
+    assert listed.status_code == 200
+    assert len(listed.json()) == 1
+
+
 def test_session_for_unknown_job_404(client: TestClient) -> None:
     r = client.post("/jobs/999/sessions", json={"turns": [{"speaker": "x", "text": "y"}]})
     assert r.status_code == 404

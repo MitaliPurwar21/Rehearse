@@ -8,11 +8,13 @@ them. The interview + scoring endpoints come in later phases.
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from livekit import api as lk
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -34,6 +36,7 @@ from services.api.schemas import (
     EvaluationOut,
     JobCreate,
     JobOut,
+    LiveToken,
     SessionCreate,
     SessionOut,
 )
@@ -95,6 +98,40 @@ def get_job(job_id: int, db: Session = Depends(get_db)) -> Job:
     if job is None:
         raise HTTPException(status_code=404, detail="job not found")
     return job
+
+
+@app.post("/jobs/{job_id}/live-token", response_model=LiveToken)
+def live_token(job_id: int, db: Session = Depends(get_db)) -> LiveToken:
+    """Mint a token the browser uses to join a voice room for this job.
+
+    The room name encodes the job id so the agent knows which competencies to probe.
+    """
+    job = db.get(Job, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="job not found")
+
+    settings = get_settings()
+    if not (settings.livekit_url and settings.livekit_api_key and settings.livekit_api_secret):
+        raise HTTPException(status_code=503, detail="voice interview is not configured")
+
+    room = f"rehearse-{job_id}-{uuid.uuid4().hex[:8]}"
+    token = (
+        lk.AccessToken(settings.livekit_api_key, settings.livekit_api_secret)
+        .with_identity(f"candidate-{uuid.uuid4().hex[:6]}")
+        .with_grants(lk.VideoGrants(room_join=True, room=room))
+        .to_jwt()
+    )
+    return LiveToken(url=settings.livekit_url, token=token, room=room)
+
+
+@app.get("/jobs/{job_id}/sessions", response_model=list[SessionOut])
+def list_job_sessions(job_id: int, db: Session = Depends(get_db)) -> list[InterviewSession]:
+    """All sessions for a job, newest first — the site polls this after a voice
+    interview to pick up the scored result."""
+    if db.get(Job, job_id) is None:
+        raise HTTPException(status_code=404, detail="job not found")
+    stmt = select(InterviewSession).where(InterviewSession.job_id == job_id)
+    return list(db.scalars(stmt.order_by(InterviewSession.id.desc())))
 
 
 @app.post("/jobs/{job_id}/sessions", response_model=SessionOut, status_code=201)
