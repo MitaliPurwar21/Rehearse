@@ -15,3 +15,10 @@ def test_cors_origins_default() -> None:
 
 def test_cors_origins_ignores_blanks() -> None:
     assert Settings(cors_origins="https://a.com,, ,").cors_origin_list == ["https://a.com"]
+
+
+def test_cors_origins_strip_trailing_slash() -> None:
+    # a browser's Origin header has no trailing slash, so we drop it to match
+    assert Settings(cors_origins="https://app.vercel.app/").cors_origin_list == [
+        "https://app.vercel.app"
+    ]

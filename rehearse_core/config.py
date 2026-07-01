@@ -40,7 +40,9 @@ class Settings(BaseSettings):
 
     @property
     def cors_origin_list(self) -> list[str]:
-        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        # Strip trailing slashes — a browser's Origin header never has one, so an
+        # allowed origin with a trailing slash would silently fail to match.
+        return [o.strip().rstrip("/") for o in self.cors_origins.split(",") if o.strip()]
 
     # --- Observability (hooked up later) ---
     langfuse_public_key: str | None = None

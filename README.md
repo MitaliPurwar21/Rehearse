@@ -10,9 +10,12 @@ calibrated against a hand-labeled golden set, with the agreement actually measur
 (quadratic-weighted Cohen's κ, Spearman ρ) and a prompt-regression gate in CI so the
 grader can't drift unnoticed.
 
-> Status: the evaluation harness is built and calibrated. The rest of the product
-> (JD ingestion, voice interview, database, web UI, deploy) is upcoming. I built the
-> harness first because it's the hardest part to fake and the most worth getting right.
+**Live:** https://rehearse-eight.vercel.app *(free backend sleeps when idle — the first
+request after a nap takes ~30s to wake)*
+
+> Status: live end to end — ingestion, a calibrated LLM judge, persistence, and a web UI,
+> deployed on Render + Vercel. I built the evaluation harness first because it's the
+> hardest part to fake and the most worth getting right. Voice interview is next.
 
 ## Results
 

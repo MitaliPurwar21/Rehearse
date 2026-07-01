@@ -13,7 +13,16 @@ from rehearse_core.config import get_settings
 from services.api.models import Base
 
 
+def normalize_url(url: str) -> str:
+    # Some providers (Neon, Heroku) hand out the old `postgres://` scheme; SQLAlchemy
+    # only accepts `postgresql://`.
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql://", 1)
+    return url
+
+
 def make_engine(url: str) -> Engine:
+    url = normalize_url(url)
     # check_same_thread is a SQLite quirk; harmless to skip for other databases.
     connect_args = {"check_same_thread": False} if url.startswith("sqlite") else {}
     return create_engine(url, connect_args=connect_args)
