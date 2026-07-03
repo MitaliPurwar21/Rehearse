@@ -103,3 +103,29 @@ button:disabled {
   margin-top: 12px;
   font-size: 14px;
 }
+
+.viz-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 96px;
+  margin-top: 16px;
+  background: #0c0e12;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.viz {
+  height: 56px;
+  width: 200px;
+  --lk-va-bar-gap: 6px;
+  --lk-va-bar-width: 10px;
+  --lk-fg: var(--accent);
+}
+
+.status {
+  text-align: center;
+  color: var(--muted);
+  margin-top: 12px;
+  font-size: 14px;
+}

@@ -1,7 +1,13 @@
 "use client";
 
 import "@livekit/components-styles";
-import { LiveKitRoom, RoomAudioRenderer } from "@livekit/components-react";
+import {
+  BarVisualizer,
+  LiveKitRoom,
+  RoomAudioRenderer,
+  useLocalParticipant,
+  useVoiceAssistant,
+} from "@livekit/components-react";
 import { useEffect, useRef, useState } from "react";
 import { getJobSessions, getLiveToken, type Evaluation } from "@/lib/api";
 
@@ -13,12 +19,45 @@ function scoreColor(score: number): string {
   return "var(--text)";
 }
 
+// The live view while you're in the room. Has to live inside <LiveKitRoom> so the hooks
+// can read the room. Shows a visualizer that reacts to the interviewer's voice, what it's
+// currently doing, and a mic toggle.
+function InterviewRoom({ onLeave }: { onLeave: () => void }) {
+  const { state, audioTrack } = useVoiceAssistant();
+  const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
+
+  const status =
+    state === "speaking"
+      ? "Interviewer is speaking…"
+      : state === "thinking"
+        ? "Thinking…"
+        : state === "listening"
+          ? "Listening — go ahead"
+          : "Connecting…";
+
+  return (
+    <>
+      <RoomAudioRenderer />
+      <div className="viz-wrap">
+        <BarVisualizer state={state} barCount={7} trackRef={audioTrack} className="viz" />
+      </div>
+      <div className="status">{status}</div>
+      <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
+        <button onClick={() => localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled)}>
+          {isMicrophoneEnabled ? "🎙️ Mute" : "🔇 Unmute"}
+        </button>
+        <button onClick={onLeave}>Leave</button>
+      </div>
+    </>
+  );
+}
+
 export function VoiceInterview({ jobId }: { jobId: number }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [creds, setCreds] = useState<{ url: string; token: string } | null>(null);
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
   const [error, setError] = useState("");
-  // Sessions that already existed before this interview, so polling only reacts to the new one.
+  // Sessions that existed before this interview, so polling only reacts to the new one.
   const baselineId = useRef(0);
 
   async function start() {
@@ -37,7 +76,7 @@ export function VoiceInterview({ jobId }: { jobId: number }) {
   }
 
   // The agent scores the interview when it ends (you say "I'm done"). Watch for the new
-  // scored session to appear, then show it.
+  // scored session to show up, then display it.
   useEffect(() => {
     if (phase !== "live" && phase !== "scoring") return;
     const timer = setInterval(async () => {
@@ -84,7 +123,7 @@ export function VoiceInterview({ jobId }: { jobId: number }) {
         <>
           <p className="muted" style={{ marginTop: 8 }}>
             Put headphones on, click start, and talk to the interviewer out loud. When you&apos;re
-            finished, say <b>&ldquo;I&apos;m done&rdquo;</b> — it&apos;ll score your answers.
+            finished, say <b>&ldquo;I&apos;m done&rdquo;</b> and it&apos;ll score your answers.
           </p>
           <button onClick={start}>Start voice interview</button>
         </>
@@ -93,26 +132,19 @@ export function VoiceInterview({ jobId }: { jobId: number }) {
       {phase === "connecting" && <p className="muted" style={{ marginTop: 8 }}>Connecting…</p>}
 
       {phase === "live" && creds && (
-        <>
-          <p className="muted" style={{ marginTop: 8 }}>
-            🎙️ Live — the interviewer will greet you. Speak your answers, and say
-            <b> &ldquo;I&apos;m done&rdquo;</b> to finish and get scored.
-          </p>
-          <LiveKitRoom
-            serverUrl={creds.url}
-            token={creds.token}
-            connect
-            audio
-            video={false}
-            onError={(e) => {
-              setError(String(e));
-              setPhase("error");
-            }}
-          >
-            <RoomAudioRenderer />
-          </LiveKitRoom>
-          <button onClick={() => setPhase("scoring")}>Leave</button>
-        </>
+        <LiveKitRoom
+          serverUrl={creds.url}
+          token={creds.token}
+          connect
+          audio
+          video={false}
+          onError={(e) => {
+            setError(String(e));
+            setPhase("error");
+          }}
+        >
+          <InterviewRoom onLeave={() => setPhase("scoring")} />
+        </LiveKitRoom>
       )}
 
       {phase === "scoring" && (

@@ -175,9 +175,9 @@ npm run dev                            # open http://localhost:3000
 
 ## Deploy
 
-Backend on Render (Docker), frontend on Vercel — both free tier. A `render.yaml`
-blueprint and `Dockerfile` are included; step-by-step in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
-SQLite by default; set `DATABASE_URL` to a Postgres URL for persistence.
+Backend on Render, frontend on Vercel, Postgres on Neon — all free tier. A complete
+from-scratch walkthrough (including the voice setup), written for someone who hasn't
+deployed before, is in **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
 
 ## Building the golden set
 
