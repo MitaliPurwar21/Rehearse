@@ -24,8 +24,9 @@ would oversell it.
 
 ## Auditing the judge
 
-I ran two probes on a 12-transcript sample of the golden set, judged by the calibrated
-Claude judge at temperature 0 — the exact setting the product ships.
+Three probes. The first two run on a 12-transcript sample of the golden set, judged by
+the calibrated Claude judge at temperature 0 — the exact setting the product ships. The
+third pits the Claude judge against Groq to check for self-preference.
 
 ### 1. Verbosity: does padding fool it?
 
@@ -84,18 +85,60 @@ Reading it:
   is well under half the human–judge gap (MAE 0.51). So most of the disagreement behind
   the 0.83 is real difference of opinion, not the model being inconsistent with itself.
 
+### 3. Self-preference: does the judge favour its own writing?
+
+LLM judges have been shown to score text their own model produced higher than an
+outside judge would — self-enhancement bias. If mine did that, some of the 0.83 would
+be the model admiring its own reflection rather than measuring quality.
+
+I tested it with a round-robin (`python -m eval.self_pref`). Same fixed interview
+questions; Claude and Groq each answer them as a strong candidate; then *both* models
+judge *both* sets of answers. If Claude's answers are simply better, both judges should
+agree by roughly the same margin. Self-preference is the **extra** margin a judge gives
+its own family — a difference-in-differences. Mean score per cell, 16 answers each:
+
+| | author = Claude | author = Groq |
+|---|---|---|
+| **judge = Claude** | 4.59 | 3.59 |
+| **judge = Groq** | 4.75 | 4.42 |
+
+- lift (Claude judge) = **+1.00**, lift (Groq judge) = **+0.33**
+- self-preference (difference-in-differences) = **+0.67**
+
+Reading it honestly:
+
+- **Both judges rank Claude's answers above Groq's**, so Claude genuinely writes the
+  better answers here — even the rival judge agrees. That part is real quality, not bias.
+- **The Claude judge's margin is three times the independent judge's.** At face value
+  that's self-preference: the Claude judge rewards its own family about two-thirds of a
+  point more than an outsider does.
+- **But the reference judge is weak, which muddies it.** Look at the Groq judge's row —
+  4.75 and 4.42, everything bunched high. It barely separates good answers from bad,
+  while the Claude judge clearly does (4.59 vs 3.59). So the +0.67 mixes two things:
+  genuine self-preference, and the Claude judge just being a better discriminator than
+  the Groq reference. You can't cleanly split those with a weak reference.
+
+So I read this as a **suggestive but confounded** signal, not a clean measurement — a
+flag worth chasing with a stronger reference judge, not a final number. It's also why I
+don't let the shipped Claude judge be the *only* scorer in a setting where Claude may
+have written what's being scored.
+
 ## What I'd do next
 
+- **A stronger, independent third judge** (a GPT-4-class model) to disambiguate the
+  self-preference number above. With only a weak reference I can't separate real
+  self-preference from the Claude judge simply discriminating better.
 - **Self-consistency (median of N runs)** would shrink the wander further, especially on
   communication. The stability numbers are the justification for adding it — and the
   before/after would be measurable.
-- **Self-enhancement check:** does the Claude judge favor Claude-written answers over
-  ones written by a different model? That's the next probe to add to `eval/audit.py`.
 
 ## Honest limits
 
-- The audit runs on a 12-transcript subset (to keep it cheap); it's representative but
-  small, same as the golden set.
+- The probes run on small samples to keep them cheap (12 transcripts for verbosity and
+  stability; 2 jobs × 4 answers for self-preference). Representative, but small — same as
+  the golden set.
+- The self-preference number uses Groq as the only independent reference, and Groq is a
+  weak discriminator, so +0.67 is a flag to investigate, not a verdict (see that section).
 - Calibration is still against a **single** labeler on **technical** roles — the main
   limitation, spelled out in the README. The audit tests the judge's behavior, not
   whether my labels are the "right" ground truth.
@@ -103,8 +146,9 @@ Reading it:
 ## Reproduce
 
 ```bash
-python -m eval.audit              # both probes on a 12-transcript sample
+python -m eval.audit                   # verbosity + stability on a 12-transcript sample
 python -m eval.audit --n 20 --runs 7   # bigger sample, more repeats
+python -m eval.self_pref --per-job 4   # self-preference round-robin (needs both API keys)
 ```
 
 It's live (calls the judge) but cached and resumable — a rate limit or a network blip
