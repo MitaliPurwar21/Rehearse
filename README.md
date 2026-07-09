@@ -37,6 +37,11 @@ Honest scope: a **single** human labeler, validated on **technical** roles only 
 those labels are credible). The rubric and harness are role-agnostic; extending
 validation to other domains needs a domain-expert labeler.
 
+I also **audited** the judge beyond agreement (`python -m eval.audit`): padding answers
+with content-free filler doesn't move the substance scores (depth/evidence change ≈ 0)
+and the judge is near-deterministic at temperature 0 (run-to-run wander well under the
+human–judge gap). Full method + numbers in [docs/EVALUATION.md](docs/EVALUATION.md).
+
 ## Repo layout
 
 ```
@@ -60,6 +65,7 @@ rehearse/
 │   ├── generate.py       # synthesize transcripts to label (live)
 │   ├── label.py          # terminal tool to hand-score transcripts
 │   ├── run_eval.py       # judge the golden set, report agreement (live, cached)
+│   ├── audit.py          # stress-test the judge: verbosity + stability probes (live, cached)
 │   ├── freeze_baseline.py# lock in the current result as the CI baseline
 │   ├── check_regression.py # CI gate: fail if agreement drops (offline)
 │   ├── baseline.json     # the frozen agreement numbers the gate checks

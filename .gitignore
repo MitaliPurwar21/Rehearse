@@ -12,6 +12,10 @@ venv/
 # Local database
 *.db
 
+# Generated audit numbers — the write-up in docs/ is the durable record
+eval/audit_report.json
+eval/selfpref_report.json
+
 # Env / secrets
 .env
 .env.local
@@ -21,3 +25,6 @@ venv/
 
 # Personal learning doc — not committed
 docs/TEACH_MITALI.md
+
+# AI session handoff doc — not committed
+PROJECT_HANDOFF.md
