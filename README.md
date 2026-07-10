@@ -195,6 +195,8 @@ deployed before, is in **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
 The managed PaaS above is the quick path. The same system also runs on Kubernetes, with
 the eval treated as a first-class cluster workload instead of a script.
 
+![An EvalRun on Kubernetes: the operator ran the golden-set agreement as a Job and wrote the QWK (0.827) and pair count back onto the custom resource.](docs/images/evalrun-demo.png)
+
 - **One image, three roles** (`Dockerfile`, multi-stage, non-root): the API, the operator,
   and the eval Job it launches all ship from one build.
 - **Helm chart** (`deploy/helm/rehearse`): API Deployment + Service + optional Ingress,

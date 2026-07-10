@@ -10,7 +10,7 @@ from pydantic import BaseModel
 import eval.self_pref as self_pref
 from eval.generate import JOBS
 from eval.runner import JudgeRunner
-from eval.schemas import CompetencyEvaluation, DimensionScore, SessionEvaluation
+from eval.schemas import CompetencyEvaluation, Dimension, DimensionScore, SessionEvaluation
 from eval.self_pref import (
     AnswerSet,
     assemble_transcript,
@@ -18,6 +18,9 @@ from eval.self_pref import (
     questions_for,
     self_preference,
 )
+
+# Typed so DimensionScore(dimension=d, ...) checks clean without a version-specific ignore.
+_DIMENSIONS: tuple[Dimension, ...] = ("relevance", "depth", "evidence", "communication")
 
 
 class _Fake:
@@ -48,8 +51,8 @@ def _canned_eval(v: int) -> SessionEvaluation:
     # dimensions get the same value so the competency score is consistent with them.
     def comp(name: str) -> CompetencyEvaluation:
         dims = [
-            DimensionScore(dimension=d, rationale="r", score=v, evidence_quotes=["q"])  # type: ignore[arg-type]
-            for d in ("relevance", "depth", "evidence", "communication")
+            DimensionScore(dimension=d, rationale="r", score=v, evidence_quotes=["q"])
+            for d in _DIMENSIONS
         ]
         return CompetencyEvaluation(
             competency=name, dimension_scores=dims, competency_score=float(v), summary_feedback="ok"
