@@ -26,5 +26,14 @@ eval/selfpref_report.json
 # Personal learning doc — not committed
 docs/TEACH_MITALI.md
 
+# Personal infra working notes — not committed
+docs/INFRA_NOTES.md
+
 # AI session handoff doc — not committed
 PROJECT_HANDOFF.md
+
+# Terraform state + local vars (never commit state or a filled tfvars)
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars

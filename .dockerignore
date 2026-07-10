@@ -1,6 +1,8 @@
-# Keep the backend image small — exclude the frontend, envs, caches, and dev cruft.
+# Keep the backend image small: exclude the frontend, infra, envs, caches, and dev cruft.
 .venv/
 apps/
+deploy/
+infra/
 .git/
 .github/
 docs/

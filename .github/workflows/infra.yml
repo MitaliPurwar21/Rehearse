@@ -1,0 +1,63 @@
+name: Infra
+
+# Validates the Kubernetes side without touching the app's ruff/mypy/pytest gate. Two
+# jobs: lint/validate the chart, then stand up a real kind cluster and run the operator
+# end to end. Only fires when infra files change.
+on:
+  push:
+    branches: [main]
+    paths: ["deploy/**", "rehearse_operator/**", "Dockerfile", ".github/workflows/infra.yml"]
+  pull_request:
+    paths: ["deploy/**", "rehearse_operator/**", "Dockerfile", ".github/workflows/infra.yml"]
+
+jobs:
+  chart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Helm lint
+        run: helm lint deploy/helm/rehearse
+      - name: Render + validate manifests
+        run: |
+          curl -sSL -o kubeconform.tar.gz \
+            https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz
+          tar xf kubeconform.tar.gz kubeconform
+          helm template rh deploy/helm/rehearse --include-crds > rendered.yaml
+          # Skip the CRD-defined kind (EvalRun) since no public schema exists for it.
+          ./kubeconform -strict -ignore-missing-schemas -skip CustomResourceDefinition,EvalRun rendered.yaml
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t rehearse:ci .
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+      - name: Load image into kind
+        run: kind load docker-image rehearse:ci --name chart-testing
+      - uses: azure/setup-helm@v4
+      - name: Install the chart
+        run: |
+          helm install rh deploy/helm/rehearse \
+            --set image.repository=rehearse --set image.tag=ci --set image.pullPolicy=IfNotPresent \
+            --wait --timeout 180s
+      - name: API is healthy
+        run: |
+          kubectl rollout status deploy/rh-rehearse-api --timeout=120s
+          kubectl run curl --image=curlimages/curl --restart=Never --rm -i --quiet -- \
+            curl -fsS http://rh-rehearse-api/health
+      - name: Operator runs an EvalRun end to end
+        run: |
+          kubectl apply -f deploy/examples/evalrun.yaml
+          for i in $(seq 1 40); do
+            phase=$(kubectl get evalrun nightly-regression -o jsonpath='{.status.phase}' 2>/dev/null || true)
+            echo "phase=$phase"
+            [ "$phase" = "Succeeded" ] && break
+            [ "$phase" = "Failed" ] && { echo "eval failed"; exit 1; }
+            sleep 6
+          done
+          qwk=$(kubectl get evalrun nightly-regression -o jsonpath='{.status.qwk}')
+          echo "reported QWK=$qwk"
+          [ -n "$qwk" ] || { echo "no QWK on status"; exit 1; }

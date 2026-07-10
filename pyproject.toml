@@ -32,6 +32,8 @@ dev = [
 ]
 # Postgres driver for deployment (DATABASE_URL=postgresql://...). SQLite needs nothing.
 postgres = ["psycopg2-binary>=2.9"]
+# Only the Kubernetes operator image installs these; the app and CI never pull them in.
+operator = ["kopf>=1.37", "kubernetes>=29"]
 
 [tool.setuptools]
 packages = ["rehearse_core", "rehearse_core.llm", "eval", "ingestion", "services", "services.api"]
@@ -43,7 +45,9 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-extend-exclude = ["apps"]  # the Next.js frontend isn't Python
+# apps/ is the Next.js frontend; rehearse_operator/ needs kopf + the k8s client, which
+# aren't dev deps — it's checked by its own kind smoke in CI, not the app gate.
+extend-exclude = ["apps", "rehearse_operator"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
@@ -56,4 +60,4 @@ extend-immutable-calls = ["fastapi.Depends"]
 python_version = "3.12"
 strict = true
 ignore_missing_imports = true
-exclude = "apps/"
+exclude = "(apps/|rehearse_operator/)"

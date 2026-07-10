@@ -1,0 +1,12 @@
+Rehearse is installed as release {{ .Release.Name }} in namespace {{ .Release.Namespace }}.
+
+Reach the API:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "rehearse.fullname" . }}-api {{ .Values.api.service.port }}:{{ .Values.api.service.port }}
+  curl http://localhost:{{ .Values.api.service.port }}/health
+
+{{- if .Values.operator.enabled }}
+
+Run an eval through the operator:
+  kubectl -n {{ .Release.Namespace }} apply -f deploy/examples/evalrun.yaml
+  kubectl -n {{ .Release.Namespace }} get evalruns -w      # watch PHASE go Running -> Succeeded, QWK fills in
+{{- end }}

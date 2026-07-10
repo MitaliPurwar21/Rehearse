@@ -1,0 +1,44 @@
+{{- if .Values.operator.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "rehearse.fullname" . }}-operator
+  labels:
+    {{- include "rehearse.labels" . | nindent 4 }}
+    app.kubernetes.io/component: operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Chart.Name }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: operator
+  template:
+    metadata:
+      labels:
+        {{- include "rehearse.labels" . | nindent 8 }}
+        app.kubernetes.io/component: operator
+    spec:
+      serviceAccountName: {{ include "rehearse.fullname" . }}-operator
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+        - name: operator
+          image: {{ include "rehearse.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # Watch only this namespace so a namespaced Role is enough.
+          command:
+            - kopf
+            - run
+            - --standalone
+            - --namespace
+            - {{ .Release.Namespace }}
+            - /app/rehearse_operator/main.py
+          env:
+            # The image the operator launches its eval Jobs with (same build as this pod).
+            - name: EVAL_IMAGE
+              value: {{ include "rehearse.image" . }}
+          resources:
+            {{- toYaml .Values.operator.resources | nindent 12 }}
+{{- end }}

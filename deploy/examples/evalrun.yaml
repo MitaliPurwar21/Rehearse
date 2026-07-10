@@ -1,0 +1,9 @@
+# Apply this and the operator runs the golden-set agreement as a Job, then writes the
+# QWK back onto this object's status. `kubectl get evalruns` shows the result.
+apiVersion: rehearse.dev/v1alpha1
+kind: EvalRun
+metadata:
+  name: nightly-regression
+spec:
+  mode: regression
+  note: "offline agreement over the frozen judgements"

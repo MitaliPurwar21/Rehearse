@@ -1,0 +1,78 @@
+{{- if .Values.operator.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "rehearse.fullname" . }}-operator
+  labels:
+    {{- include "rehearse.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "rehearse.fullname" . }}-operator
+  labels:
+    {{- include "rehearse.labels" . | nindent 4 }}
+rules:
+  # Watch the EvalRuns and write their status back.
+  - apiGroups: ["rehearse.dev"]
+    resources: ["evalruns", "evalruns/status"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  # Launch and clean up the eval Jobs.
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  # Read the Job's pod logs to pull the result out.
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list"]
+  # kopf posts events on the objects it handles.
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "rehearse.fullname" . }}-operator
+  labels:
+    {{- include "rehearse.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "rehearse.fullname" . }}-operator
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "rehearse.fullname" . }}-operator
+    namespace: {{ .Release.Namespace }}
+---
+# kopf discovers resources cluster-wide at startup (namespaces + CRDs). Without this it
+# still works but spams 403 warnings, so grant just those reads at the cluster scope.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "rehearse.fullname" . }}-operator
+  labels:
+    {{- include "rehearse.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["list", "watch"]
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "rehearse.fullname" . }}-operator
+  labels:
+    {{- include "rehearse.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "rehearse.fullname" . }}-operator
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "rehearse.fullname" . }}-operator
+    namespace: {{ .Release.Namespace }}
+{{- end }}

@@ -89,7 +89,10 @@ rehearse/
 │   └── lib/api.ts        #   client for the FastAPI backend
 ├── apps/agent/           # LiveKit voice worker (spoken interview -> judge)
 │   └── agent.py          #   competency-grounded interviewer, posts transcript for scoring
-├── .github/workflows/    # CI: ruff, mypy, pytest, eval regression gate
+├── rehearse_operator/    # kopf operator: EvalRun CRD -> eval Job -> writes QWK to status
+├── deploy/helm/rehearse/ # Helm chart: API, operator, CRD, RBAC, HPA, optional Postgres
+├── infra/terraform/      # GKE Autopilot cluster (apply on demand, destroy after)
+├── .github/workflows/    # CI: app gate (ruff/mypy/pytest/eval) + infra (helm/kind e2e)
 ├── tests/                # offline unit tests (no network)
 └── pyproject.toml
 ```
@@ -186,6 +189,38 @@ npm run dev                            # open http://localhost:3000
 Backend on Render, frontend on Vercel, Postgres on Neon — all free tier. A complete
 from-scratch walkthrough (including the voice setup), written for someone who hasn't
 deployed before, is in **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
+
+## Kubernetes
+
+The managed PaaS above is the quick path. The same system also runs on Kubernetes, with
+the eval treated as a first-class cluster workload instead of a script.
+
+- **One image, three roles** (`Dockerfile`, multi-stage, non-root): the API, the operator,
+  and the eval Job it launches all ship from one build.
+- **Helm chart** (`deploy/helm/rehearse`): API Deployment + Service + optional Ingress,
+  an HPA and resource limits, an in-cluster Postgres (toggle off to use Neon), and the
+  operator with its RBAC.
+- **An operator** (`rehearse_operator`, kopf): defines an `EvalRun` custom resource. Apply
+  one and the operator runs the golden-set agreement as a Kubernetes Job, then writes the
+  QWK back onto the resource's status. So `kubectl get evalruns` shows the score. The Job
+  runs the offline agreement (no API key), so it's reproducible and free.
+- **Terraform** (`infra/terraform`): a GKE Autopilot cluster, brought up on demand for a
+  cloud demo and torn down after so it stays inside the free trial.
+- **CI** (`.github/workflows/infra.yml`): `helm lint` + `kubeconform`, then a real `kind`
+  cluster that installs the chart and drives an `EvalRun` end to end. Separate from the
+  app's ruff/mypy/pytest/eval gate.
+
+Local run on kind:
+
+```bash
+kind create cluster
+docker build -t rehearse:dev .
+kind load docker-image rehearse:dev
+helm install rh deploy/helm/rehearse \
+  --set image.repository=rehearse --set image.tag=dev --set image.pullPolicy=IfNotPresent --wait
+kubectl apply -f deploy/examples/evalrun.yaml
+kubectl get evalruns -w        # PHASE Running -> Succeeded, QWK fills in
+```
 
 ## Building the golden set
 
