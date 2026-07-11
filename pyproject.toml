@@ -36,7 +36,7 @@ postgres = ["psycopg2-binary>=2.9"]
 operator = ["kopf>=1.37", "kubernetes>=29"]
 
 [tool.setuptools]
-packages = ["rehearse_core", "rehearse_core.llm", "eval", "ingestion", "services", "services.api"]
+packages = ["rehearse_core", "rehearse_core.llm", "eval", "ingestion", "services", "services.api", "finetune"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

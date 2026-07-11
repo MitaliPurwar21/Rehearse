@@ -29,6 +29,9 @@ docs/TEACH_MITALI.md
 # Personal infra working notes — not committed
 docs/INFRA_NOTES.md
 
+# Personal fine-tuning working notes — not committed
+docs/FINETUNE_NOTES.md
+
 # Personal interview-prep study guide — not committed
 PROJECT_MASTER_GUIDE.md
 
@@ -40,3 +43,6 @@ PROJECT_HANDOFF.md
 *.tfstate
 *.tfstate.*
 terraform.tfvars
+
+# Generated fine-tuning data (synthetic, regenerable from the pipeline)
+finetune/data/
