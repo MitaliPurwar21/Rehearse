@@ -47,7 +47,7 @@ line-length = 100
 target-version = "py312"
 # apps/ is the Next.js frontend; rehearse_operator/ needs kopf + the k8s client, which
 # aren't dev deps — it's checked by its own kind smoke in CI, not the app gate.
-extend-exclude = ["apps", "rehearse_operator"]
+extend-exclude = ["apps", "rehearse_operator", "*.ipynb"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
