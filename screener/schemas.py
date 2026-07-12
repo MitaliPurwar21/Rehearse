@@ -27,3 +27,10 @@ class GapReport(BaseModel):
 
 class QuestionSet(BaseModel):
     questions: list[str] = Field(..., min_length=1, max_length=10)
+
+
+class RequiredSkills(BaseModel):
+    """The concrete skills a JD asks for, granular enough to make gaps meaningful."""
+
+    required: list[str] = Field(..., min_length=1, max_length=25)
+    nice_to_have: list[str] = Field(default_factory=list, max_length=25)

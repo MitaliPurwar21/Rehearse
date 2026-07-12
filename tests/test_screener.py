@@ -69,6 +69,15 @@ def test_gap_report_handles_full_match() -> None:
     assert "core skills" in report.summary
 
 
+def test_extract_required_skills_returns_granular_skills() -> None:
+    from screener.extract_skills import extract_required_skills
+    from screener.schemas import RequiredSkills
+
+    provider = FakeProvider(RequiredSkills(required=["FastAPI", "Railway"], nice_to_have=["Redis"]))
+    got = extract_required_skills("We need FastAPI on Railway...", provider)
+    assert got.required == ["FastAPI", "Railway"]
+
+
 def test_extract_text_plain() -> None:
     from screener.extract_text import extract_text
 

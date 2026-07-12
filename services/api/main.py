@@ -23,6 +23,7 @@ from finetune.jobs import JobPosting
 from ingestion.extract import extract_competencies
 from rehearse_core.config import get_settings
 from rehearse_core.llm.base import LLMProvider
+from screener.extract_skills import extract_required_skills
 from screener.extract_text import extract_text
 from screener.gap import gap_report
 from screener.parse_resume import parse_resume
@@ -51,18 +52,18 @@ from services.api.schemas import (
 )
 
 
-def _posting(job: Job) -> JobPosting:
+def _posting(job: Job, required_skills: list[str], nice_to_have: list[str]) -> JobPosting:
     """Map a stored Job into the shape the fit scorer was trained on.
 
-    The competency names become the required skills, and the raw JD text rides along, so
-    the same prompt works whether the scorer is Claude or the fine-tuned model.
+    Callers pass the skills to score against, so the same prompt works whether the scorer is
+    Claude or the fine-tuned model, and gaps can be as granular as the caller wants.
     """
     return {
         "job_id": str(job.id),
         "role": job.role_title,
         "seniority": job.seniority or "unspecified",
-        "required_skills": [c.name for c in job.competencies],
-        "nice_to_have": [],
+        "required_skills": required_skills,
+        "nice_to_have": nice_to_have,
         "jd_text": job.job_description,
     }
 
@@ -157,7 +158,10 @@ def score_fit_route(
         raise HTTPException(status_code=404, detail="job not found")
     if not payload.resume_text.strip():
         raise HTTPException(status_code=422, detail="resume_text is empty")
-    fit = score_fit(payload.resume_text, _posting(job), provider)
+    # Score against granular JD skills so the gaps are specific, not high-level themes.
+    skills = extract_required_skills(job.job_description, provider)
+    posting = _posting(job, skills.required, skills.nice_to_have)
+    fit = score_fit(payload.resume_text, posting, provider)
     return FitOut(fit=fit, gap=gap_report(fit))
 
 
@@ -173,7 +177,8 @@ def questions_route(
         raise HTTPException(status_code=404, detail="job not found")
     if not payload.resume_text.strip():
         raise HTTPException(status_code=422, detail="resume_text is empty")
-    return generate_questions(payload.resume_text, _posting(job), provider)
+    posting = _posting(job, [c.name for c in job.competencies], [])
+    return generate_questions(payload.resume_text, posting, provider)
 
 
 @app.post("/jobs/{job_id}/live-token", response_model=LiveToken)

@@ -14,7 +14,7 @@ from sqlalchemy.pool import StaticPool
 from eval.schemas import CompetencyEvaluation, DimensionScore, SessionEvaluation
 from finetune.schemas import FitScore
 from ingestion.schemas import Competency, JobProfile
-from screener.schemas import QuestionSet, ResumeProfile
+from screener.schemas import QuestionSet, RequiredSkills, ResumeProfile
 from services.api.deps import get_db, get_provider
 from services.api.main import app
 from services.api.models import Base
@@ -81,6 +81,10 @@ def _question_set() -> QuestionSet:
     )
 
 
+def _required_skills() -> RequiredSkills:
+    return RequiredSkills(required=["RAG systems", "Python"], nice_to_have=["Kubernetes"])
+
+
 class _SchemaFake:
     """Returns a canned response based on the schema requested — so one fake can serve
     both ingestion (JobProfile) and evaluation (SessionEvaluation)."""
@@ -125,6 +129,7 @@ def client() -> Iterator[TestClient]:
             FitScore: _fitscore(),
             ResumeProfile: _resume_profile(),
             QuestionSet: _question_set(),
+            RequiredSkills: _required_skills(),
         }
     )
     app.dependency_overrides[get_db] = override_db
