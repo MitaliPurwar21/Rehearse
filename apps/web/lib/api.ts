@@ -61,3 +61,30 @@ export function getLiveToken(jobId: number): Promise<LiveToken> {
 export function getJobSessions(jobId: number): Promise<Session[]> {
   return getJson<Session[]>(`/jobs/${jobId}/sessions`);
 }
+
+// --- resume screener (fit + gap + tailored questions) ---
+export type FitScore = {
+  overall_fit: number;
+  skills_match: number;
+  experience_match: number;
+  seniority_match: number;
+  matched_skills: string[];
+  missing_skills: string[];
+  rationale: string;
+};
+export type GapReport = {
+  overall_fit: number;
+  strengths: string[];
+  gaps: string[];
+  summary: string;
+};
+export type FitResult = { fit: FitScore; gap: GapReport };
+export type QuestionSet = { questions: string[] };
+
+export function scoreFit(jobId: number, resumeText: string): Promise<FitResult> {
+  return send<FitResult>(`/jobs/${jobId}/fit`, { resume_text: resumeText });
+}
+
+export function getQuestions(jobId: number, resumeText: string): Promise<QuestionSet> {
+  return send<QuestionSet>(`/jobs/${jobId}/questions`, { resume_text: resumeText });
+}

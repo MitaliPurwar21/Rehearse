@@ -5,7 +5,10 @@ import {
   createJob,
   createSession,
   evaluateSession,
+  scoreFit,
+  getQuestions,
   type Evaluation,
+  type FitResult,
   type Job,
 } from "@/lib/api";
 import { VoiceInterview } from "@/components/VoiceInterview";
@@ -28,6 +31,10 @@ export default function Home() {
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [resume, setResume] = useState("");
+  const [fit, setFit] = useState<FitResult | null>(null);
+  const [questions, setQuestions] = useState<string[] | null>(null);
+  const [fitLoading, setFitLoading] = useState(false);
 
   async function onExtract() {
     setError("");
@@ -38,6 +45,24 @@ export default function Home() {
       setError(String(e));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function onCheckFit() {
+    if (!job) return;
+    setError("");
+    setFitLoading(true);
+    try {
+      const [f, q] = await Promise.all([
+        scoreFit(job.id, resume),
+        getQuestions(job.id, resume),
+      ]);
+      setFit(f);
+      setQuestions(q.questions);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setFitLoading(false);
     }
   }
 
@@ -87,6 +112,65 @@ export default function Home() {
               </span>
             ))}
           </div>
+        </div>
+      )}
+
+      {job && (
+        <div className="panel">
+          <strong>Check your resume against this role</strong>
+          <textarea
+            value={resume}
+            onChange={(e) => setResume(e.target.value)}
+            placeholder="Paste your resume here..."
+          />
+          <button onClick={onCheckFit} disabled={fitLoading || resume.trim().length < 40}>
+            {fitLoading ? "Checking..." : "Check fit"}
+          </button>
+
+          {fit && (
+            <div style={{ marginTop: 16 }}>
+              <div className="score-row">
+                <div>Overall fit</div>
+                <div className="score">{fit.fit.overall_fit}/100</div>
+              </div>
+              <p style={{ marginTop: 8 }}>{fit.gap.summary}</p>
+
+              <div className="muted" style={{ fontSize: 13, marginTop: 12 }}>Strengths</div>
+              <div>
+                {fit.gap.strengths.length ? (
+                  fit.gap.strengths.map((s) => (
+                    <span key={s} className="chip">{s}</span>
+                  ))
+                ) : (
+                  <span className="muted">none found</span>
+                )}
+              </div>
+
+              <div className="muted" style={{ fontSize: 13, marginTop: 12 }}>Gaps</div>
+              <div>
+                {fit.gap.gaps.length ? (
+                  fit.gap.gaps.map((g) => (
+                    <span key={g} className="chip">{g}</span>
+                  ))
+                ) : (
+                  <span className="muted">none</span>
+                )}
+              </div>
+
+              {questions && questions.length > 0 && (
+                <>
+                  <div className="muted" style={{ fontSize: 13, marginTop: 16 }}>
+                    Interview questions tailored to you
+                  </div>
+                  <ol style={{ marginTop: 6, paddingLeft: 20 }}>
+                    {questions.map((q, i) => (
+                      <li key={i} style={{ marginTop: 6 }}>{q}</li>
+                    ))}
+                  </ol>
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
 
