@@ -15,6 +15,7 @@ import {
 import { VoiceInterview } from "@/components/VoiceInterview";
 import { ScoreGauge } from "@/components/ScoreGauge";
 import { ScoreTrends } from "@/components/ScoreTrends";
+import { CandidatePool } from "@/components/CandidatePool";
 
 const QUESTION = "Walk me through your most relevant project for this role — what you built, the hardest problem, and how you measured success.";
 
@@ -249,6 +250,8 @@ export default function Home() {
       )}
 
       {job && <ScoreTrends jobId={job.id} refreshKey={scored} />}
+
+      {job && <CandidatePool jobId={job.id} />}
 
       {error && <div className="error">{error}</div>}
     </main>

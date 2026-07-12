@@ -96,3 +96,14 @@ export async function uploadResume(file: File): Promise<{ resume_text: string }>
   if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
   return res.json() as Promise<{ resume_text: string }>;
 }
+
+// --- recruiter side: semantic candidate pool (pgvector) ---
+export type Candidate = { name: string; similarity: number; snippet: string };
+
+export function addToPool(name: string, resumeText: string): Promise<{ id: number; name: string }> {
+  return send<{ id: number; name: string }>("/resumes", { name, resume_text: resumeText });
+}
+
+export function getCandidates(jobId: number, k = 5): Promise<Candidate[]> {
+  return getJson<Candidate[]>(`/jobs/${jobId}/candidates?k=${k}`);
+}
