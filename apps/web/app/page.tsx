@@ -14,6 +14,7 @@ import {
 } from "@/lib/api";
 import { VoiceInterview } from "@/components/VoiceInterview";
 import { ScoreGauge } from "@/components/ScoreGauge";
+import { ScoreTrends } from "@/components/ScoreTrends";
 
 const QUESTION = "Walk me through your most relevant project for this role — what you built, the hardest problem, and how you measured success.";
 
@@ -37,6 +38,7 @@ export default function Home() {
   const [fit, setFit] = useState<FitResult | null>(null);
   const [questions, setQuestions] = useState<string[] | null>(null);
   const [fitLoading, setFitLoading] = useState(false);
+  const [scored, setScored] = useState(0);
 
   async function onExtract() {
     setError("");
@@ -91,6 +93,7 @@ export default function Home() {
         { speaker: "candidate", text: answer },
       ]);
       setEvaluation(await evaluateSession(session.id));
+      setScored((n) => n + 1);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -244,6 +247,8 @@ export default function Home() {
           <p className="muted" style={{ fontSize: 12 }}>Scored by {evaluation.model_id}</p>
         </div>
       )}
+
+      {job && <ScoreTrends jobId={job.id} refreshKey={scored} />}
 
       {error && <div className="error">{error}</div>}
     </main>
