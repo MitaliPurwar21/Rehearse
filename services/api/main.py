@@ -9,7 +9,7 @@ them. The interview + scoring endpoints come in later phases.
 from __future__ import annotations
 
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
@@ -23,6 +23,7 @@ from finetune.jobs import JobPosting
 from ingestion.extract import extract_competencies
 from rehearse_core.config import get_settings
 from rehearse_core.llm.base import LLMProvider
+from retrieval.store import add_resume, search
 from screener.extract_skills import extract_required_skills
 from screener.extract_text import extract_text
 from screener.gap import gap_report
@@ -31,7 +32,7 @@ from screener.questions import generate_questions
 from screener.schemas import QuestionSet, ResumeProfile
 from screener.score import score_fit
 from services.api.db import init_db
-from services.api.deps import get_db, get_provider
+from services.api.deps import get_db, get_embedder, get_provider
 from services.api.models import (
     Competency,
     CompetencyScore,
@@ -41,15 +42,19 @@ from services.api.models import (
     Turn,
 )
 from services.api.schemas import (
+    CandidateOut,
     EvaluationOut,
     FitOut,
     JobCreate,
     JobOut,
     LiveToken,
+    ResumeDocIn,
     ResumeIn,
     SessionCreate,
     SessionOut,
 )
+
+Embedder = Callable[[list[str]], list[list[float]]]
 
 
 def _posting(job: Job, required_skills: list[str], nice_to_have: list[str]) -> JobPosting:
@@ -134,6 +139,37 @@ def parse_resume_route(
     if not payload.resume_text.strip():
         raise HTTPException(status_code=422, detail="resume_text is empty")
     return parse_resume(payload.resume_text, provider)
+
+
+@app.post("/resumes", status_code=201)
+def add_resume_route(
+    payload: ResumeDocIn,
+    db: Session = Depends(get_db),
+    embedder: Embedder = Depends(get_embedder),
+) -> dict[str, object]:
+    """Add a resume to the searchable pool (embeds it and stores the vector)."""
+    if not payload.resume_text.strip():
+        raise HTTPException(status_code=422, detail="resume_text is empty")
+    doc = add_resume(db, payload.name, payload.resume_text, embedder)
+    return {"id": doc.id, "name": doc.name}
+
+
+@app.get("/jobs/{job_id}/candidates", response_model=list[CandidateOut])
+def candidates_route(
+    job_id: int,
+    k: int = 5,
+    db: Session = Depends(get_db),
+    embedder: Embedder = Depends(get_embedder),
+) -> list[CandidateOut]:
+    """Rank the resume pool against this job by semantic similarity (pgvector on Postgres)."""
+    job = db.get(Job, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="job not found")
+    results = search(db, job.job_description, k, embedder)
+    return [
+        CandidateOut(name=d.name, similarity=round(sim, 3), snippet=d.resume_text[:160])
+        for d, sim in results
+    ]
 
 
 @app.post("/resume/upload")

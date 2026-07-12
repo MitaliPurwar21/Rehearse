@@ -15,9 +15,14 @@ from eval.schemas import CompetencyEvaluation, DimensionScore, SessionEvaluation
 from finetune.schemas import FitScore
 from ingestion.schemas import Competency, JobProfile
 from screener.schemas import QuestionSet, RequiredSkills, ResumeProfile
-from services.api.deps import get_db, get_provider
+from services.api.deps import get_db, get_embedder, get_provider
 from services.api.main import app
 from services.api.models import Base
+
+
+def _fake_embedder(texts: list[str]) -> list[list[float]]:
+    kws = ["python", "java", "react"]
+    return [[float(t.lower().count(kw)) for kw in kws] for t in texts]
 
 _T = TypeVar("_T", bound=BaseModel)
 
@@ -134,6 +139,7 @@ def client() -> Iterator[TestClient]:
     )
     app.dependency_overrides[get_db] = override_db
     app.dependency_overrides[get_provider] = lambda: fake
+    app.dependency_overrides[get_embedder] = lambda: _fake_embedder
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -262,3 +268,22 @@ def test_questions_route(client: TestClient) -> None:
     r = client.post(f"/jobs/{job_id}/questions", json={"resume_text": "Jane Doe, RAG, Python."})
     assert r.status_code == 200
     assert len(r.json()["questions"]) >= 1
+
+
+def test_candidate_retrieval_ranks_pool(client: TestClient) -> None:
+    # JD text (not the extracted competencies) is what's embedded, so put "python" in it.
+    made = client.post("/jobs", json={"job_description": "Senior python engineer for RAG systems"})
+    job_id = made.json()["id"]
+    client.post("/resumes", json={"name": "Py Dev", "resume_text": "python python python"})
+    client.post("/resumes", json={"name": "FE Dev", "resume_text": "react react"})
+
+    r = client.get(f"/jobs/{job_id}/candidates?k=2")
+    assert r.status_code == 200
+    names = [c["name"] for c in r.json()]
+    assert names[0] == "Py Dev"  # the python resume is closest to the python-ish JD
+    assert len(names) == 2
+
+
+def test_add_resume_empty_rejected(client: TestClient) -> None:
+    r = client.post("/resumes", json={"name": "x", "resume_text": "  "})
+    assert r.status_code == 422

@@ -13,9 +13,24 @@ from datetime import UTC, datetime
 from sqlalchemy import ForeignKey, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
+from retrieval.embed import EMBED_DIM
+from services.api.vectors import Embedding
+
 
 class Base(DeclarativeBase):
     pass
+
+
+class ResumeDoc(Base):
+    """A resume in the searchable pool. embedding is a pgvector column on Postgres."""
+
+    __tablename__ = "resume_docs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str]
+    resume_text: Mapped[str] = mapped_column(Text)
+    embedding: Mapped[list[float]] = mapped_column(Embedding(EMBED_DIM))
+    created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(UTC))
 
 
 class Job(Base):

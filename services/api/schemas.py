@@ -20,6 +20,19 @@ class ResumeIn(BaseModel):
     resume_text: str
 
 
+class ResumeDocIn(BaseModel):
+    name: str
+    resume_text: str
+
+
+class CandidateOut(BaseModel):
+    """One retrieved candidate from the resume pool."""
+
+    name: str
+    similarity: float
+    snippet: str
+
+
 class FitOut(BaseModel):
     """A fit score plus its candidate-facing gap report."""
 

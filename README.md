@@ -64,6 +64,13 @@ with the *teacher*, not human recruiters: a distilled 8B student reproducing a C
 at roughly a tenth of the cost, not a model trained on recruiter judgements. Method + honest
 limits in [docs/EVALUATION.md](docs/EVALUATION.md#distilling-a-resume-to-jd-fit-scorer).
 
+On top of the scorer, the candidate side supports a resume upload (PDF/Word) → **fit + gap
+report** against a JD's granular skills → **interview questions tailored to the resume**, and
+a **score-trends** view of your overall score across attempts. For the recruiter side, resumes
+are embedded (local `fastembed`, no API cost) and stored in **pgvector** on Postgres, so a JD
+can retrieve the most semantically similar candidates from a pool (`<=>` cosine search on
+Postgres, an exact scan on SQLite for local dev).
+
 ## Repo layout
 
 ```

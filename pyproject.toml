@@ -23,6 +23,8 @@ dependencies = [
     "pypdf>=4.0",           # extract text from uploaded PDF resumes
     "python-docx>=1.1",     # extract text from uploaded Word resumes
     "python-multipart>=0.0.9",  # FastAPI file uploads
+    "fastembed>=0.3",       # local ONNX embeddings for semantic resume search
+    "pgvector>=0.3",        # vector column + cosine search on Postgres
 ]
 
 [project.optional-dependencies]
@@ -39,7 +41,7 @@ postgres = ["psycopg2-binary>=2.9"]
 operator = ["kopf>=1.37", "kubernetes>=29"]
 
 [tool.setuptools]
-packages = ["rehearse_core", "rehearse_core.llm", "eval", "ingestion", "services", "services.api", "finetune", "screener"]
+packages = ["rehearse_core", "rehearse_core.llm", "eval", "ingestion", "services", "services.api", "finetune", "screener", "retrieval"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

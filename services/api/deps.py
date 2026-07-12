@@ -7,13 +7,14 @@ LLM calls.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 
 from sqlalchemy.orm import Session
 
 from rehearse_core.config import get_settings
 from rehearse_core.llm.base import LLMProvider
 from rehearse_core.llm.factory import build_provider
+from retrieval.embed import embed
 from services.api.db import SessionLocal
 
 
@@ -27,3 +28,8 @@ def get_db() -> Iterator[Session]:
 
 def get_provider() -> LLMProvider:
     return build_provider(get_settings())
+
+
+def get_embedder() -> Callable[[list[str]], list[list[float]]]:
+    # Overridden in tests with a fake so the model never loads there.
+    return embed
