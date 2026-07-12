@@ -210,6 +210,38 @@ def test_fit_from_message_raises_without_tool_call() -> None:
         fit_from_message(message)
 
 
+def test_extract_fit_parses_clean_and_embedded() -> None:
+    from finetune.eval_screener import extract_fit
+
+    clean = _fit().model_dump_json()
+    assert extract_fit(clean) is not None
+    embedded = "Here is the score: " + clean + " done."
+    got = extract_fit(embedded)
+    assert got is not None and got.overall_fit == 80
+    assert extract_fit("no json here at all") is None
+
+
+def test_evaluate_counts_parse_failures_and_metrics() -> None:
+    from finetune.eval_screener import evaluate
+
+    test: list[dict[str, object]] = [
+        {"pair_id": "pair_0001", "fit": _fit(overall_fit=80, skills_match=4).model_dump()},
+        {"pair_id": "pair_0002", "fit": _fit(overall_fit=40, skills_match=2).model_dump()},
+        {"pair_id": "pair_0003", "fit": _fit(overall_fit=60, skills_match=3).model_dump()},
+    ]
+    preds = {
+        "pair_0001": _fit(overall_fit=82, skills_match=4).model_dump_json(),
+        "pair_0002": _fit(overall_fit=38, skills_match=2).model_dump_json(),
+        "pair_0003": "garbage, not json",  # unparseable -> excluded from the agreement
+    }
+    report = evaluate(test, preds)
+    assert report.n_test == 3
+    assert report.n_predicted == 3
+    assert report.n_parsed == 2
+    assert set(report.subdims) == {"skills_match", "experience_match", "seniority_match"}
+    assert report.overall_mae >= 0.0
+
+
 def test_to_row_roundtrips_completion() -> None:
     record = _labeled_set()[0]
     row = to_row(record, "train")

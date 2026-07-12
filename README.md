@@ -43,6 +43,25 @@ near-deterministic at temperature 0 (run-to-run wander well under the human–ju
 and a Claude-vs-Groq round-robin flags a suggestive but confounded own-family preference.
 Full method + numbers in [docs/EVALUATION.md](docs/EVALUATION.md).
 
+## Distilled resume–JD fit scorer
+
+Separate from the judge, I distilled a Claude teacher (Sonnet) into a small local model that
+scores how well a resume matches a job. The teacher labeled ~1,600 synthetic (resume, JD)
+pairs into a structured fit score; I QLoRA fine-tuned Llama-3.1-8B on a single T4 to reproduce
+it, then measured the student against the teacher on a held-out test split.
+
+| | Agreement (student vs. teacher, 160 test pairs) |
+|---|---|
+| skills_match (κ) | 0.97 |
+| experience_match (κ) | 0.96 |
+| seniority_match (κ) | 0.89 |
+| overall_fit (0–100) | MAE 3.6, Spearman ρ 0.96 |
+
+All 160 outputs parsed as valid JSON. This is agreement with the *teacher*, not human
+recruiters: a distilled 8B student reproducing a Claude teacher at roughly a tenth of the
+cost, not a model trained on recruiter judgements. Method + honest limits in
+[docs/EVALUATION.md](docs/EVALUATION.md#distilling-a-resume-to-jd-fit-scorer).
+
 ## Repo layout
 
 ```

@@ -123,6 +123,54 @@ flag worth chasing with a stronger reference judge, not a final number. It's als
 don't let the shipped Claude judge be the *only* scorer in a setting where Claude may
 have written what's being scored.
 
+## Distilling a resume-to-JD fit scorer
+
+The judge above grades interview answers. The same evaluation setup let me train a second,
+cheaper model for a different task: scoring how well a resume matches a job.
+
+The idea is distillation. A Claude teacher (Sonnet 4.6) scored ~1,600 synthetic (resume, JD)
+pairs into a fixed schema: `overall_fit` 0-100, plus 1-5 `skills` / `experience` /
+`seniority` sub-scores, matched and missing skills, and a short rationale. I then QLoRA
+fine-tuned Llama-3.1-8B on a single T4 to reproduce those scores, and measured the student
+against the teacher on a held-out test split with the same metrics as the judge.
+
+The data is synthetic on purpose. There's no public dataset of resumes labeled with recruiter
+fit scores, and real resumes are a privacy problem, so this is honestly a distillation, not a
+model trained on human recruiter judgements.
+
+### Result (160 held-out test pairs, student vs teacher)
+
+| dimension        | QWK  | 95% CI       | MAE  | exact |
+|------------------|------|--------------|------|-------|
+| skills_match     | 0.97 | [0.95, 0.98] | 0.14 | 86%   |
+| experience_match | 0.96 | [0.94, 0.97] | 0.16 | 84%   |
+| seniority_match  | 0.89 | [0.85, 0.92] | 0.23 | 77%   |
+
+`overall_fit` (0-100): MAE 3.6, Spearman 0.96. All 160 outputs parsed as valid JSON in the
+schema. The 8B student stays within ~3.6 points on the 0-100 fit and QWK 0.89-0.97 on the
+sub-scores; seniority is the hardest, which fits since it's the subtlest of the three.
+
+### What this does and doesn't claim
+
+It measures agreement with the **teacher**, not with human recruiters. A distilled student
+can't beat its teacher: the point is reproducing it at roughly a tenth of the cost, on my own
+hardware, with a small local model. The teacher (Sonnet) is the one calibrated against humans,
+at QWK 0.83 in the judge section above, so the student sits one distillation step away from
+human agreement and I report it that way.
+
+Still open: a raw, non-fine-tuned Llama baseline on the same test set, to separate "the
+fine-tune taught it this" from "Llama could already do it." That's the next number to add.
+
+### Reproduce
+
+```bash
+python -m finetune.generate_data --per-combo 40   # ~1,600 resumes (Haiku)
+python -m finetune.label_data --batch             # teacher scores them (Sonnet, Batches API)
+python -m finetune.prepare                         # train/val/test split
+# train the QLoRA adapter in finetune/train_qlora.ipynb on a Colab T4, then:
+python -m finetune.eval_screener                   # agreement vs the teacher
+```
+
 ## What I'd do next
 
 - **A stronger, independent third judge** (a GPT-4-class model) to disambiguate the
