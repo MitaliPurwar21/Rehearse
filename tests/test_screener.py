@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import io
+
 import pytest
 
 from finetune.jobs import JOBS
@@ -65,3 +67,23 @@ def test_gap_report_handles_full_match() -> None:
     report = gap_report(_fit(matched_skills=["Python"], missing_skills=[]))
     assert report.gaps == []
     assert "core skills" in report.summary
+
+
+def test_extract_text_plain() -> None:
+    from screener.extract_text import extract_text
+
+    assert extract_text("resume.txt", b"Jane Doe, Python, RAG") == "Jane Doe, Python, RAG"
+
+
+def test_extract_text_docx() -> None:
+    import docx
+
+    from screener.extract_text import extract_text
+
+    doc = docx.Document()
+    doc.add_paragraph("Jane Doe")
+    doc.add_paragraph("Python, Kubernetes")
+    buf = io.BytesIO()
+    doc.save(buf)
+    text = extract_text("resume.docx", buf.getvalue())
+    assert "Jane Doe" in text and "Kubernetes" in text

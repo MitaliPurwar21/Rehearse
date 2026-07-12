@@ -225,6 +225,19 @@ def test_parse_resume_empty_rejected(client: TestClient) -> None:
     assert client.post("/resume", json={"resume_text": "   "}).status_code == 422
 
 
+def test_resume_upload_txt(client: TestClient) -> None:
+    r = client.post(
+        "/resume/upload", files={"file": ("resume.txt", b"Jane Doe, Python, RAG", "text/plain")}
+    )
+    assert r.status_code == 200
+    assert "Jane Doe" in r.json()["resume_text"]
+
+
+def test_resume_upload_empty_rejected(client: TestClient) -> None:
+    r = client.post("/resume/upload", files={"file": ("resume.txt", b"   ", "text/plain")})
+    assert r.status_code == 422
+
+
 def test_fit_route_returns_fit_and_gap(client: TestClient) -> None:
     job_id = _make_job(client)
     r = client.post(f"/jobs/{job_id}/fit", json={"resume_text": "Jane Doe, RAG, Python."})

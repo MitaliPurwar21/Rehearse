@@ -20,6 +20,9 @@ dependencies = [
     "uvicorn>=0.29",
     "sqlalchemy>=2.0",
     "livekit-api>=0.8",
+    "pypdf>=4.0",           # extract text from uploaded PDF resumes
+    "python-docx>=1.1",     # extract text from uploaded Word resumes
+    "python-multipart>=0.0.9",  # FastAPI file uploads
 ]
 
 [project.optional-dependencies]
@@ -53,8 +56,8 @@ extend-exclude = ["apps", "rehearse_operator", "*.ipynb"]
 select = ["E", "F", "I", "UP", "B"]
 
 [tool.ruff.lint.flake8-bugbear]
-# FastAPI's Depends()/Query() are meant to be used as argument defaults.
-extend-immutable-calls = ["fastapi.Depends"]
+# FastAPI's Depends()/File() are meant to be used as argument defaults.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.File"]
 
 [tool.mypy]
 python_version = "3.12"

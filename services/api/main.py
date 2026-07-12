@@ -12,7 +12,7 @@ import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from livekit import api as lk
 from sqlalchemy import select
@@ -23,6 +23,7 @@ from finetune.jobs import JobPosting
 from ingestion.extract import extract_competencies
 from rehearse_core.config import get_settings
 from rehearse_core.llm.base import LLMProvider
+from screener.extract_text import extract_text
 from screener.gap import gap_report
 from screener.parse_resume import parse_resume
 from screener.questions import generate_questions
@@ -132,6 +133,16 @@ def parse_resume_route(
     if not payload.resume_text.strip():
         raise HTTPException(status_code=422, detail="resume_text is empty")
     return parse_resume(payload.resume_text, provider)
+
+
+@app.post("/resume/upload")
+async def upload_resume(file: UploadFile = File(...)) -> dict[str, str]:
+    """Extract text from an uploaded PDF/Word resume so the browser can prefill it."""
+    data = await file.read()
+    text = extract_text(file.filename or "", data)
+    if not text.strip():
+        raise HTTPException(status_code=422, detail="could not read any text from that file")
+    return {"resume_text": text}
 
 
 @app.post("/jobs/{job_id}/fit", response_model=FitOut)
