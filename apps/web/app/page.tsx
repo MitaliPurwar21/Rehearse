@@ -7,11 +7,13 @@ import {
   evaluateSession,
   scoreFit,
   getQuestions,
+  uploadResume,
   type Evaluation,
   type FitResult,
   type Job,
 } from "@/lib/api";
 import { VoiceInterview } from "@/components/VoiceInterview";
+import { ScoreGauge } from "@/components/ScoreGauge";
 
 const QUESTION = "Walk me through your most relevant project for this role — what you built, the hardest problem, and how you measured success.";
 
@@ -45,6 +47,19 @@ export default function Home() {
       setError(String(e));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function onUploadResume(file: File) {
+    setError("");
+    setFitLoading(true);
+    try {
+      const { resume_text } = await uploadResume(file);
+      setResume(resume_text);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setFitLoading(false);
     }
   }
 
@@ -118,6 +133,21 @@ export default function Home() {
       {job && (
         <div className="panel">
           <strong>Check your resume against this role</strong>
+          <div>
+            <label className="file-btn">
+              📄 Upload PDF / Word
+              <input
+                type="file"
+                accept=".pdf,.docx,.txt"
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) onUploadResume(f);
+                }}
+              />
+            </label>
+            <span className="muted" style={{ fontSize: 13 }}>or paste below</span>
+          </div>
           <textarea
             value={resume}
             onChange={(e) => setResume(e.target.value)}
@@ -128,29 +158,26 @@ export default function Home() {
           </button>
 
           {fit && (
-            <div style={{ marginTop: 16 }}>
-              <div className="score-row">
-                <div>Overall fit</div>
-                <div className="score">{fit.fit.overall_fit}/100</div>
-              </div>
-              <p style={{ marginTop: 8 }}>{fit.gap.summary}</p>
+            <div style={{ marginTop: 8 }}>
+              <ScoreGauge value={fit.fit.overall_fit} />
+              <p style={{ textAlign: "center", marginTop: 4 }}>{fit.gap.summary}</p>
 
-              <div className="muted" style={{ fontSize: 13, marginTop: 12 }}>Strengths</div>
+              <div className="section-label">Strengths</div>
               <div>
                 {fit.gap.strengths.length ? (
                   fit.gap.strengths.map((s) => (
-                    <span key={s} className="chip">{s}</span>
+                    <span key={s} className="chip chip-good">{s}</span>
                   ))
                 ) : (
                   <span className="muted">none found</span>
                 )}
               </div>
 
-              <div className="muted" style={{ fontSize: 13, marginTop: 12 }}>Gaps</div>
+              <div className="section-label">Gaps</div>
               <div>
                 {fit.gap.gaps.length ? (
                   fit.gap.gaps.map((g) => (
-                    <span key={g} className="chip">{g}</span>
+                    <span key={g} className="chip chip-bad">{g}</span>
                   ))
                 ) : (
                   <span className="muted">none</span>
@@ -159,12 +186,10 @@ export default function Home() {
 
               {questions && questions.length > 0 && (
                 <>
-                  <div className="muted" style={{ fontSize: 13, marginTop: 16 }}>
-                    Interview questions tailored to you
-                  </div>
-                  <ol style={{ marginTop: 6, paddingLeft: 20 }}>
+                  <div className="section-label">Interview questions tailored to you</div>
+                  <ol className="questions">
                     {questions.map((q, i) => (
-                      <li key={i} style={{ marginTop: 6 }}>{q}</li>
+                      <li key={i}>{q}</li>
                     ))}
                   </ol>
                 </>

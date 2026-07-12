@@ -88,3 +88,11 @@ export function scoreFit(jobId: number, resumeText: string): Promise<FitResult> 
 export function getQuestions(jobId: number, resumeText: string): Promise<QuestionSet> {
   return send<QuestionSet>(`/jobs/${jobId}/questions`, { resume_text: resumeText });
 }
+
+export async function uploadResume(file: File): Promise<{ resume_text: string }> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${API}/resume/upload`, { method: "POST", body: form });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  return res.json() as Promise<{ resume_text: string }>;
+}
