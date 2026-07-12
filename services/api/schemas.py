@@ -8,9 +8,23 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict
 
+from finetune.schemas import FitScore
+from screener.schemas import GapReport
+
 
 class JobCreate(BaseModel):
     job_description: str
+
+
+class ResumeIn(BaseModel):
+    resume_text: str
+
+
+class FitOut(BaseModel):
+    """A fit score plus its candidate-facing gap report."""
+
+    fit: FitScore
+    gap: GapReport
 
 
 class CompetencyOut(BaseModel):

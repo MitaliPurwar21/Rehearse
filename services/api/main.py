@@ -19,9 +19,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from eval.runner import JudgeRunner, Transcript
+from finetune.jobs import JobPosting
 from ingestion.extract import extract_competencies
 from rehearse_core.config import get_settings
 from rehearse_core.llm.base import LLMProvider
+from screener.gap import gap_report
+from screener.parse_resume import parse_resume
+from screener.questions import generate_questions
+from screener.schemas import QuestionSet, ResumeProfile
+from screener.score import score_fit
 from services.api.db import init_db
 from services.api.deps import get_db, get_provider
 from services.api.models import (
@@ -34,12 +40,30 @@ from services.api.models import (
 )
 from services.api.schemas import (
     EvaluationOut,
+    FitOut,
     JobCreate,
     JobOut,
     LiveToken,
+    ResumeIn,
     SessionCreate,
     SessionOut,
 )
+
+
+def _posting(job: Job) -> JobPosting:
+    """Map a stored Job into the shape the fit scorer was trained on.
+
+    The competency names become the required skills, and the raw JD text rides along, so
+    the same prompt works whether the scorer is Claude or the fine-tuned model.
+    """
+    return {
+        "job_id": str(job.id),
+        "role": job.role_title,
+        "seniority": job.seniority or "unspecified",
+        "required_skills": [c.name for c in job.competencies],
+        "nice_to_have": [],
+        "jd_text": job.job_description,
+    }
 
 
 @asynccontextmanager
@@ -98,6 +122,47 @@ def get_job(job_id: int, db: Session = Depends(get_db)) -> Job:
     if job is None:
         raise HTTPException(status_code=404, detail="job not found")
     return job
+
+
+@app.post("/resume", response_model=ResumeProfile)
+def parse_resume_route(
+    payload: ResumeIn,
+    provider: LLMProvider = Depends(get_provider),
+) -> ResumeProfile:
+    if not payload.resume_text.strip():
+        raise HTTPException(status_code=422, detail="resume_text is empty")
+    return parse_resume(payload.resume_text, provider)
+
+
+@app.post("/jobs/{job_id}/fit", response_model=FitOut)
+def score_fit_route(
+    job_id: int,
+    payload: ResumeIn,
+    db: Session = Depends(get_db),
+    provider: LLMProvider = Depends(get_provider),
+) -> FitOut:
+    job = db.get(Job, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="job not found")
+    if not payload.resume_text.strip():
+        raise HTTPException(status_code=422, detail="resume_text is empty")
+    fit = score_fit(payload.resume_text, _posting(job), provider)
+    return FitOut(fit=fit, gap=gap_report(fit))
+
+
+@app.post("/jobs/{job_id}/questions", response_model=QuestionSet)
+def questions_route(
+    job_id: int,
+    payload: ResumeIn,
+    db: Session = Depends(get_db),
+    provider: LLMProvider = Depends(get_provider),
+) -> QuestionSet:
+    job = db.get(Job, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="job not found")
+    if not payload.resume_text.strip():
+        raise HTTPException(status_code=422, detail="resume_text is empty")
+    return generate_questions(payload.resume_text, _posting(job), provider)
 
 
 @app.post("/jobs/{job_id}/live-token", response_model=LiveToken)

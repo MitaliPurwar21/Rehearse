@@ -12,7 +12,9 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from eval.schemas import CompetencyEvaluation, DimensionScore, SessionEvaluation
+from finetune.schemas import FitScore
 from ingestion.schemas import Competency, JobProfile
+from screener.schemas import QuestionSet, ResumeProfile
 from services.api.deps import get_db, get_provider
 from services.api.main import app
 from services.api.models import Base
@@ -48,6 +50,34 @@ def _evaluation() -> SessionEvaluation:
             )
         ],
         overall_feedback="decent overall, work on rigor",
+    )
+
+
+def _fitscore() -> FitScore:
+    return FitScore(
+        overall_fit=78,
+        skills_match=4,
+        experience_match=4,
+        seniority_match=5,
+        matched_skills=["RAG systems", "Communication"],
+        missing_skills=["Production debugging"],
+        rationale="Strong on retrieval and communication, lighter on incident work.",
+    )
+
+
+def _resume_profile() -> ResumeProfile:
+    return ResumeProfile(
+        name="Jane Doe",
+        summary="ML engineer with RAG experience.",
+        skills=["Python", "RAG systems"],
+        years_experience=6.0,
+        titles=["Senior ML Engineer"],
+    )
+
+
+def _question_set() -> QuestionSet:
+    return QuestionSet(
+        questions=["Walk me through a RAG system you shipped.", "How do you debug it?"]
     )
 
 
@@ -88,7 +118,15 @@ def client() -> Iterator[TestClient]:
         finally:
             db.close()
 
-    fake = _SchemaFake({JobProfile: _profile(), SessionEvaluation: _evaluation()})
+    fake = _SchemaFake(
+        {
+            JobProfile: _profile(),
+            SessionEvaluation: _evaluation(),
+            FitScore: _fitscore(),
+            ResumeProfile: _resume_profile(),
+            QuestionSet: _question_set(),
+        }
+    )
     app.dependency_overrides[get_db] = override_db
     app.dependency_overrides[get_provider] = lambda: fake
     yield TestClient(app)
@@ -175,3 +213,34 @@ def test_list_job_sessions(client: TestClient) -> None:
 def test_session_for_unknown_job_404(client: TestClient) -> None:
     r = client.post("/jobs/999/sessions", json={"turns": [{"speaker": "x", "text": "y"}]})
     assert r.status_code == 404
+
+
+def test_parse_resume_route(client: TestClient) -> None:
+    r = client.post("/resume", json={"resume_text": "Jane Doe, ML engineer, Python, RAG."})
+    assert r.status_code == 200
+    assert "Python" in r.json()["skills"]
+
+
+def test_parse_resume_empty_rejected(client: TestClient) -> None:
+    assert client.post("/resume", json={"resume_text": "   "}).status_code == 422
+
+
+def test_fit_route_returns_fit_and_gap(client: TestClient) -> None:
+    job_id = _make_job(client)
+    r = client.post(f"/jobs/{job_id}/fit", json={"resume_text": "Jane Doe, RAG, Python."})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["fit"]["overall_fit"] == 78
+    assert "Production debugging" in body["gap"]["gaps"]
+    assert body["gap"]["summary"]
+
+
+def test_fit_route_missing_job_404(client: TestClient) -> None:
+    assert client.post("/jobs/999/fit", json={"resume_text": "x"}).status_code == 404
+
+
+def test_questions_route(client: TestClient) -> None:
+    job_id = _make_job(client)
+    r = client.post(f"/jobs/{job_id}/questions", json={"resume_text": "Jane Doe, RAG, Python."})
+    assert r.status_code == 200
+    assert len(r.json()["questions"]) >= 1
