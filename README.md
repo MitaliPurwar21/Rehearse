@@ -57,10 +57,12 @@ it, then measured the student against the teacher on a held-out test split.
 | seniority_match (κ) | 0.89 |
 | overall_fit (0–100) | MAE 3.6, Spearman ρ 0.96 |
 
-All 160 outputs parsed as valid JSON. This is agreement with the *teacher*, not human
-recruiters: a distilled 8B student reproducing a Claude teacher at roughly a tenth of the
-cost, not a model trained on recruiter judgements. Method + honest limits in
-[docs/EVALUATION.md](docs/EVALUATION.md#distilling-a-resume-to-jd-fit-scorer).
+All 160 outputs parsed as valid JSON – the same base model **without** fine-tuning produced
+**0** valid JSON on the same test set (it emits markdown/prose, not the schema), so the
+fine-tune's real payoff is reliable structured output plus close agreement. This is agreement
+with the *teacher*, not human recruiters: a distilled 8B student reproducing a Claude teacher
+at roughly a tenth of the cost, not a model trained on recruiter judgements. Method + honest
+limits in [docs/EVALUATION.md](docs/EVALUATION.md#distilling-a-resume-to-jd-fit-scorer).
 
 ## Repo layout
 

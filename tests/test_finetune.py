@@ -242,6 +242,20 @@ def test_evaluate_counts_parse_failures_and_metrics() -> None:
     assert report.overall_mae >= 0.0
 
 
+def test_evaluate_handles_zero_parsed() -> None:
+    # The raw-baseline case: nothing parses. It must report cleanly, not crash.
+    from finetune.eval_screener import evaluate
+
+    test: list[dict[str, object]] = [
+        {"pair_id": "pair_0001", "fit": _fit().model_dump()},
+        {"pair_id": "pair_0002", "fit": _fit().model_dump()},
+    ]
+    preds = {"pair_0001": "**overall_fit**: 90 (markdown, not json)", "pair_0002": "prose"}
+    report = evaluate(test, preds)
+    assert report.n_parsed == 0
+    assert report.subdims == {}
+
+
 def test_to_row_roundtrips_completion() -> None:
     record = _labeled_set()[0]
     row = to_row(record, "train")

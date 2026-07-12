@@ -150,6 +150,16 @@ model trained on human recruiter judgements.
 schema. The 8B student stays within ~3.6 points on the 0-100 fit and QWK 0.89-0.97 on the
 sub-scores; seniority is the hardest, which fits since it's the subtlest of the three.
 
+### What the fine-tune actually bought (vs the raw model)
+
+The same base model with no fine-tuning, on the same 160 test pairs, produced **0 valid
+JSON outputs**. It understood the task (the scores it wrote out are reasonable) but emitted
+markdown and prose (`**overall_fit**: 95`) instead of the schema, so nothing could be scored
+programmatically. So the fine-tune's contribution is concrete: it took the model from 0%
+usable structured output to 100% valid JSON, and to QWK 0.89-0.97 agreement with the teacher.
+That is the honest value here, reliable structured scoring from a small local model, not
+beating a human recruiter.
+
 ### What this does and doesn't claim
 
 It measures agreement with the **teacher**, not with human recruiters. A distilled student

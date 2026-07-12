@@ -93,20 +93,24 @@ def evaluate(test: list[dict[str, object]], preds: dict[str, str]) -> ScreenerRe
 
     ids = [pid for pid in teacher if pid in student]
     subdims: dict[str, AgreementStats] = {}
-    for dim in SUBDIMS:
-        human = [int(getattr(teacher[i], dim)) for i in ids]
-        model = [int(getattr(student[i], dim)) for i in ids]
-        subdims[dim] = compute_agreement(human, model)
-
-    overall_h = [teacher[i].overall_fit for i in ids]
-    overall_m = [student[i].overall_fit for i in ids]
+    overall_mae = float("nan")
+    overall_spearman = float("nan")
+    if ids:
+        for dim in SUBDIMS:
+            human = [int(getattr(teacher[i], dim)) for i in ids]
+            model = [int(getattr(student[i], dim)) for i in ids]
+            subdims[dim] = compute_agreement(human, model)
+        overall_h = [teacher[i].overall_fit for i in ids]
+        overall_m = [student[i].overall_fit for i in ids]
+        overall_mae = mae(overall_h, overall_m)
+        overall_spearman = spearman(overall_h, overall_m)
     return ScreenerReport(
         n_test=len(test),
         n_predicted=n_predicted,
         n_parsed=len(ids),
         subdims=subdims,
-        overall_mae=mae(overall_h, overall_m),
-        overall_spearman=spearman(overall_h, overall_m),
+        overall_mae=overall_mae,
+        overall_spearman=overall_spearman,
     )
 
 
@@ -114,6 +118,9 @@ def print_report(report: ScreenerReport) -> None:
     print("Distilled scorer vs teacher (held-out test split)")
     parsed = f"{report.n_parsed}/{report.n_test} ({report.parse_rate:.1%})"
     print(f"n={report.n_test}, parsed {parsed}\n")
+    if not report.subdims:
+        print("Not enough valid JSON to score agreement (the model didn't emit the schema).")
+        return
     print(f"{'dimension':<18}{'QWK':>7}{'95% CI':>16}{'MAE':>7}{'exact':>8}")
     for dim, s in report.subdims.items():
         ci = f"[{s.qwk_ci_low:.2f}, {s.qwk_ci_high:.2f}]"
