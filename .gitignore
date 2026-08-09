@@ -32,6 +32,16 @@ docs/INFRA_NOTES.md
 # Personal fine-tuning working notes — not committed
 docs/FINETUNE_NOTES.md
 
+# Personal interview-prep guide — not committed
+docs/REHEARSE_INTERVIEW_GUIDE.md
+
+# Personal redeploy guide — not committed
+docs/REDEPLOY_GUIDE.md
+
+# Generated guide artifacts (rendered HTML/PDF) — not committed
+docs/*.html
+docs/*.pdf
+
 # Personal interview-prep study guide — not committed
 PROJECT_MASTER_GUIDE.md
 
